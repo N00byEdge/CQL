@@ -2,7 +2,7 @@
 
 #include "gtest/gtest.h"
 
-TEST(Lookup, stringIntTuple) {
+TEST(Lookup, StringIntTuple) {
   CQL::Table<std::tuple<std::string, int>> db;
   db.addEntry("Alice", 5);
   db.addEntry("Bob", 55);
@@ -16,7 +16,7 @@ TEST(Lookup, stringIntTuple) {
   EXPECT_EQ(std::get<1>(*b), 55);
 }
 
-TEST(Lookup, stringIntTupleFail) {
+TEST(Lookup, StringIntTupleFail) {
   CQL::Table<std::tuple<std::string, int>> db;
   db.addEntry("Alice", 5);
   db.addEntry("Bob", 55);
