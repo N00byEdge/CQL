@@ -4,8 +4,8 @@
 
 TEST(Lookup, IntSet) {
   CQL::Table<std::tuple<int>> db;
-  db.addEntry(5);
-  db.addEntry(555);
+  db.emplace(5);
+  db.emplace(555);
 
   auto const a = db.lookup<0>(5);
   auto const b = db.lookup<0>(555);
@@ -18,8 +18,8 @@ TEST(Lookup, IntSet) {
 
 TEST(Lookup, IntSetFail) {
   CQL::Table<std::tuple<int>> db;
-  db.addEntry(5);
-  db.addEntry(555);
+  db.emplace(5);
+  db.emplace(555);
 
   auto const fail = db.lookup<0>(55);
 

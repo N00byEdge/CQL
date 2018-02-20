@@ -29,8 +29,8 @@ template<size_t Ind> struct std::tuple_element<Ind, SimpleUser> {
 
 TEST(Lookup, SimpleUser) {
   CQL::Table<SimpleUser> db;
-  db.addEntry("Alice", 5);
-  db.addEntry("Bob", 55);
+  db.emplace("Alice", 5);
+  db.emplace("Bob", 55);
 
   auto const a = db.lookup<1>("Alice");
   auto const b = db.lookup<1>("Bob");
@@ -43,8 +43,8 @@ TEST(Lookup, SimpleUser) {
 
 TEST(Lookup, SimpleUserFail) {
   CQL::Table<SimpleUser> db;
-  db.addEntry("Alice", 5);
-  db.addEntry("Bob", 55);
+  db.emplace("Alice", 5);
+  db.emplace("Bob", 55);
 
   auto const fail = db.lookup<1>("Fail");
 

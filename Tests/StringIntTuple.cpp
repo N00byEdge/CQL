@@ -4,8 +4,8 @@
 
 TEST(Lookup, StringIntTuple) {
   CQL::Table<std::tuple<std::string, int>> db;
-  db.addEntry("Alice", 5);
-  db.addEntry("Bob", 55);
+  db.emplace("Alice", 5);
+  db.emplace("Bob", 55);
 
   auto const a = db.lookup<0>("Alice");
   auto const b = db.lookup<0>("Bob");
@@ -18,8 +18,8 @@ TEST(Lookup, StringIntTuple) {
 
 TEST(Lookup, StringIntTupleFail) {
   CQL::Table<std::tuple<std::string, int>> db;
-  db.addEntry("Alice", 5);
-  db.addEntry("Bob", 55);
+  db.emplace("Alice", 5);
+  db.emplace("Bob", 55);
 
   auto const fail = db.lookup<0>("Fail");
 

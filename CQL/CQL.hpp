@@ -13,7 +13,7 @@ namespace CQL {
     Table() = default;
 
     template<typename ...Args>
-    std::shared_ptr<Entry const> addEntry(Args &&...args) {
+    std::shared_ptr<Entry const> emplace(Args &&...args) {
       std::shared_ptr<Entry> ptr = std::make_shared<Entry>(std::forward<Args>(args)...);
       updateAll<0>(ptr);
       return ptr;
