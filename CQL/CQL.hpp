@@ -78,7 +78,9 @@ namespace CQL {
   };
 
   template<typename T>
-  void Serialize(std::ostream &os, T const &&val);
+  void Serialize(std::ostream &os, T const &&val) {
+    val.serialize(os);
+  }
 
   template<typename T>
   void Serialize(std::ostream &os, int const &&val) {
@@ -98,7 +100,9 @@ namespace CQL {
   }
 
   template<typename T>
-  T Deserialize(std::istream &is);
+  T Deserialize(std::istream &is) {
+    return T{ is };
+  }
 
   template<>
   inline int Deserialize(std::istream &is) {
