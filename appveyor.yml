@@ -18,9 +18,12 @@ build:
   parallel: true
 
 platform:
-  - x86
+  - Win32
   - x64
 
 configuration:
   - Release
   - Debug
+
+test_script:
+  - 'C:\projects\Source\%PLATFORM%\%CONFIGURATION%\Tests.exe'
