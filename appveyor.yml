@@ -1,0 +1,19 @@
+version: 1.0.{build}
+
+image: Visual Studio 2017
+
+clone_folder: C:\projects\Source
+
+shallow_clone: true
+clone_depth: 5
+
+matrix:
+  fast_finish: true
+
+platform:
+  - x84
+  - x64
+
+configuration:
+  - Release
+  - Debug
