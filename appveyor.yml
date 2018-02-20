@@ -11,7 +11,7 @@ matrix:
   fast_finish: true
 
 platform:
-  - x84
+  - x86
   - x64
 
 configuration:
