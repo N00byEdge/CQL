@@ -1,4 +1,4 @@
-version: 1.0.{build}
+version: 1.0.{build}-{branch}
 
 image: Visual Studio 2017
 
@@ -9,6 +9,13 @@ clone_depth: 5
 
 matrix:
   fast_finish: true
+
+before_build:
+- ps: nuget restore C:\projects\Source\CQL.sln
+
+build:
+  project: C:\projects\Source\CQL.sln
+  parallel: true
 
 platform:
   - x86
