@@ -118,7 +118,7 @@ namespace CQL {
   inline std::string Deserialize(std::istream &is) {
     auto const len = Deserialize<uint64_t>(is);
     std::string result;
-    result.reserve(len);
+    result.reserve(static_cast<size_t>(len));
     std::copy_n(std::istreambuf_iterator<char>(is), len, std::back_inserter(result));
     return result;
   }
