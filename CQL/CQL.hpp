@@ -60,7 +60,7 @@ namespace CQL {
 
     template<size_t ...Is>
     static decltype(auto) makeSets(std::index_sequence<Is...>) {
-      return std::make_tuple(std::set<std::shared_ptr<Entry>, Compare<Is>>{}...);
+      return std::make_tuple(std::multiset<std::shared_ptr<Entry>, Compare<Is>>{}...);
     }
 
     using Sets = decltype(makeSets(std::make_index_sequence<std::tuple_size<Entry>::value>{}));
