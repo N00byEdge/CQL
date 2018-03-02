@@ -1,11 +1,9 @@
 #pragma once
 
-#include <tuple>
+#include <algorithm>
+#include <utility>
 #include <memory>
 #include <set>
-#include <mutex>
-#include <iostream>
-#include <algorithm>
 
 namespace CQL {
   template<typename Entry>
@@ -21,109 +19,78 @@ namespace CQL {
 
     template<size_t N, typename T>
     std::shared_ptr<Entry const> lookup(T const &val) {
-      std::shared_ptr<Entry> ret = nullptr;
-      auto &l = lut<N>();
-      {
-        std::lock_guard<std::mutex> lock(l.mut);
-        if (auto it = l.lut.find(val); it != l.lut.end())
-          ret = *it;
-      }
+      std::shared_ptr<Entry> ret;
+      if (auto it = std::get<N>(luts).find(val); it != std::get<N>(luts).end())
+        ret = *it;
 
       return ret;
     }
 
+    template<size_t N, typename T>
+    void update(std::shared_ptr<Entry const> const &entry, T &&newVal) {
+      std::shared_ptr<Entry> dbEntry = moveOutOfTable<N>(entry);
+      std::get<N>(*dbEntry) = newVal;
+      std::get<N>(luts).emplace(std::move(dbEntry));
+    }
+
   private:
     template<size_t N>
-    struct Lookup {
-      struct Compare {
-        bool operator()(std::shared_ptr<Entry> const &lhs, std::shared_ptr<Entry> const &rhs) const {
-          return std::get<N>(*lhs) < std::get<N>(*rhs);
-        }
-
-        template <typename T>
-        bool operator()(T const &lhs, std::shared_ptr<Entry> const &rhs) const {
-          return lhs < std::get<N>(*rhs);
-        }
-
-        template <typename T>
-        bool operator()(std::shared_ptr<Entry> const &lhs, T const &rhs) const {
-          return std::get<N>(*lhs) < rhs;
-        }
-
-        using is_transparent = int;
+    struct Compare {
+      template<typename T>
+      struct isEntry {
+        constexpr static bool value = std::is_same<T, std::shared_ptr<Entry>>::value
+                                   || std::is_same<T, std::shared_ptr<Entry const>>::value;
       };
 
-      std::set<std::shared_ptr<Entry>, Compare> lut;
-      std::mutex mut;
+      template<typename T1, typename T2>
+      bool operator()(T1 const &lhs, T2 const &rhs) const {
+        if constexpr(isEntry<T1>::value && isEntry<T2>::value) {
+          return std::get<N>(*lhs) < std::get<N>(*rhs);
+        }
+        else if constexpr(isEntry<T1>::value) {
+          return std::get<N>(*lhs) < rhs;
+        }
+        else if constexpr(isEntry<T2>::value) {
+          return lhs < std::get<N>(*rhs);
+        }
+      }
+
+      using is_transparent = void;
     };
 
-    template<size_t N>
-    Lookup<N> &lut() {
-      static Lookup<N> lut;
-      return lut;
+    template<size_t ...Is>
+    static decltype(auto) makeSets(std::index_sequence<Is...>) {
+      return std::make_tuple(std::set<std::shared_ptr<Entry>, Compare<Is>>{}...);
     }
+
+    using Sets = decltype(makeSets(std::make_index_sequence<std::tuple_size<Entry>::value>{}));
+
+    Sets luts{};
 
     template<size_t N>
     void updateAll(std::shared_ptr<Entry> &entry) {
-      {
-        auto &l = lut<N>();
-        std::lock_guard<std::mutex>(l.mut);
-        l.lut.emplace(entry);
+      if constexpr(N < std::tuple_size<Entry>::value) {
+        std::get<N>(luts).emplace(entry);
+        updateAll<N + 1>(entry);
       }
-      updateAll<N + 1>(entry);
     }
 
-    template <>
-    void updateAll<std::tuple_size_v<Entry>>(std::shared_ptr<Entry> &entry) { }
+    template<size_t N>
+    auto findInLut(std::shared_ptr<Entry const> val) {
+      auto low = std::get<N>(luts).lower_bound(val);
+      auto hi = std::get<N>(luts).upper_bound(val);
+      if (auto f = std::find(low, hi, val); f != hi)
+        return f;
+      return std::get<N>(luts).end();
+    }
+
+    template<size_t N>
+    std::shared_ptr<Entry> moveOutOfTable(std::shared_ptr<Entry const> val) {
+      auto it = findInLut<N>(val);
+      auto dbEntry = std::move(*it);
+      std::get<N>(luts).erase(it);
+      return dbEntry;
+    }
   };
-
-  template<typename T>
-  void Serialize(std::ostream &os, T const &&val) {
-    val.serialize(os);
-  }
-
-  template<typename T>
-  void Serialize(std::ostream &os, int const &&val) {
-    os.write(reinterpret_cast<const char *>(&val), sizeof(int));
-  }
-
-  template<>
-  inline void Serialize(std::ostream &os, uint64_t const &&val) {
-    os.write(reinterpret_cast<const char *>(&val), sizeof(uint64_t));
-  }
-
-  template<>
-  inline void Serialize(std::ostream &os, std::string const &&val) {
-    uint64_t len = val.size();
-    Serialize(os, std::forward<uint64_t>(len));
-    os.write(val.data(), len);
-  }
-
-  template<typename T>
-  T Deserialize(std::istream &is) {
-    return T{ is };
-  }
-
-  template<>
-  inline int Deserialize(std::istream &is) {
-    int temp;
-    is.read(reinterpret_cast<char *>(&temp), sizeof(int));
-    return temp;
-  }
-
-  template<>
-  inline uint64_t Deserialize(std::istream &is) {
-    uint64_t val;
-    is.read(reinterpret_cast<char *>(&val), sizeof(uint64_t));
-    return val;
-  }
-
-  template<>
-  inline std::string Deserialize(std::istream &is) {
-    auto const len = Deserialize<uint64_t>(is);
-    std::string result;
-    result.reserve(static_cast<size_t>(len));
-    std::copy_n(std::istreambuf_iterator<char>(is), len, std::back_inserter(result));
-    return result;
-  }
 }
+

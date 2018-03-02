@@ -15,5 +15,16 @@
     <Filter Include="Test">
       <UniqueIdentifier>{bbcd2b91-dbed-47a7-8fac-03df0886a7c3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Headers">
+      <UniqueIdentifier>{1db8e0c2-833e-4961-860f-3f73a77d200f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="SimpleUser.hpp">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
