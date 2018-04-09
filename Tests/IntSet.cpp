@@ -7,7 +7,7 @@ TEST(Emplace, IntSet) {
   auto const a = db.emplace(5);
 
   EXPECT_NE(a, nullptr);
-  EXPECT_EQ(a.use_count(), 2);
+  EXPECT_EQ(a.use_count(), 3);
 }
 
 TEST(Lookup, IntSet) {
@@ -45,4 +45,149 @@ TEST(Update, IntSet) {
   auto const fail = db.lookup<0>(5);
 
   EXPECT_EQ(fail, nullptr);
+}
+
+TEST(Empty, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  EXPECT_EQ(db.empty(), true);
+
+  db.emplace(5);
+
+  EXPECT_EQ(db.empty(), false);
+}
+
+TEST(Size, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  EXPECT_EQ(db.size(), 0);
+
+  db.emplace(5);
+
+  EXPECT_EQ(db.size(), 1);
+
+  for(size_t i = 0; i < 4; ++ i)
+    db.emplace(5);
+
+  EXPECT_EQ(db.size(), 5);
+
+  db.emplace(6);
+
+  EXPECT_EQ(db.size(), 6);
+}
+
+TEST(Erase, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+                 db.emplace(4);
+  auto const a = db.emplace(5);
+                 db.emplace(6);
+
+  EXPECT_EQ(db.size(), 3);
+  EXPECT_EQ(a.use_count(), 3);
+
+  db.erase(a);
+
+  EXPECT_EQ(db.size(), 2);
+  EXPECT_EQ(a.use_count(), 1);
+
+  EXPECT_EQ(db.lookup<0>(5), nullptr);
+}
+
+TEST(Iterate, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  db.emplace(4);
+  db.emplace(5);
+  db.emplace(6);
+
+  std::vector<int> vals;
+
+  for(auto &i : db) {
+    vals.emplace_back(std::get<0>(i));
+  }
+
+  std::sort(vals.begin(), vals.end());
+
+  auto const ans = std::vector<int>{ 4, 5, 6 };
+
+  EXPECT_EQ(vals, ans);
+}
+
+TEST(BeginEndEq, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  EXPECT_EQ(db.begin(), db.end());
+}
+
+TEST(BeginEndNe, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  db.emplace(5);
+
+  EXPECT_NE(db.begin(), db.end());
+}
+
+TEST(IteratorErase, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  db.emplace(4);
+  db.emplace(5);
+  db.emplace(6);
+
+  for(auto it = db.begin(); it != db.end();) {
+    if(std::get<0>(*it) == 5) {
+      it = db.erase(it);
+    }
+    else {
+      ++it;
+    }
+  }
+
+  std::vector<int> vals;
+
+  for (auto &i : db) {
+    vals.emplace_back(std::get<0>(i));
+  }
+
+  std::sort(vals.begin(), vals.end());
+
+  auto const ans = std::vector<int>{ 4, 6 };
+
+  EXPECT_EQ(vals, ans);
+}
+
+TEST(OrderedIteration, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  db.emplace(4);
+  db.emplace(5);
+  db.emplace(6);
+
+  std::vector<int> vals;
+
+  for (auto it = db.vbegin<0>(); it != db.vend<0>(); ++ it) {
+    vals.emplace_back(std::get<0>(*it));
+  }
+
+  auto const ans = std::vector<int>{ 4, 5, 6 };
+
+  EXPECT_EQ(vals, ans);
+}
+
+TEST(ROrderedIteration, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  db.emplace(4);
+  db.emplace(5);
+  db.emplace(6);
+
+  std::vector<int> vals;
+
+  for (auto it = db.rvbegin<0>(); it != db.rvend<0>(); ++it) {
+    vals.emplace_back(std::get<0>(*it));
+  }
+
+  auto const ans = std::vector<int>{ 6, 5, 4 };
+
+  EXPECT_EQ(vals, ans);
 }

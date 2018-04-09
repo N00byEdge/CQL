@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CQL.hpp" />
+    <ClInclude Include="CQL\Custom.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\appveyor.yml" />
