@@ -2,6 +2,7 @@
 
 #include "CQL/Custom.hpp"
 
+#include <unordered_set>
 #include <type_traits>
 #include <algorithm>
 #include <utility>
@@ -14,10 +15,149 @@ namespace CQL {
   struct Table {
     Table() = default;
 
+  private:
+    struct AndOperation; struct OrOperation;
+  public:
+#define ExprOperators                                                  \
+    template<typename Expr>                                            \
+    auto operator&&(Expr &&other) && {                                 \
+      return makeExpr<AndOperation>(std::move(*this),                  \
+                                    std::forward<Expr>(other));        \
+    }                                                                  \
+                                                                       \
+    template<typename Expr>                                            \
+    auto operator&&(Expr &&other) & {                                  \
+      return makeExpr<AndOperation>(*this, std::forward<Expr>(other)); \
+    }                                                                  \
+                                                                       \
+    template<typename Expr>                                            \
+    auto operator||(Expr &&other) && {                                 \
+      return makeExpr<OrOperation>(std::move(*this),                   \
+                                   std::forward<Expr>(other));         \
+    }                                                                  \
+                                                                       \
+    template<typename Expr>                                            \
+    auto operator||(Expr &&other) & {                                  \
+      return makeExpr<OrOperation>(*this, std::forward<Expr>(other));  \
+    }
+
+#define ForEachOperator                                                \
+    template<typename F>                                               \
+    auto operator>>=(F functor) { return forEach(functor); }
+
+    template<typename F>
+    struct Predicate {
+      Predicate(F &&f) : f{ f } { }
+      bool operator()(Entry const &entry) { return f(entry); }
+
+      ExprOperators
+
+    private:
+      F f;
+    };
+
+    template<typename Operator, typename RangeL, typename RangeR>
+    struct RangeExpr {
+      RangeExpr(RangeL &&rl, RangeR &&rr): rl{ std::forward<RangeL>(rl) }, rr{ std::forward<RangeR>(rr) } { }
+
+      template<typename F>
+      void forEach(F functor) {
+        auto each = [&](auto &smaller, auto &larger) {
+          if constexpr(std::is_same_v<Operator, OrOperation>) {
+            std::unordered_set<Entry const *> visited;
+            smaller.forEach([&](Entry const &entry) {
+              functor(entry);
+              visited.emplace(&entry);
+            });
+
+            larger.forEach([&](Entry const &entry) {
+              if (visited.find(&entry) == visited.end()) {
+                functor(entry);
+              }
+            });
+          }
+          else if constexpr(std::is_same_v<Operator, AndOperation>) {
+            smaller.forEach([&](Entry const &entry) {
+              if (larger(entry)) {
+                functor(entry);
+              }
+            });
+          }
+        };
+
+        if (rl.size() < rr.size()) {
+          each(rl, rr);
+        }
+        else {
+          each(rr, rl);
+        }
+      }
+
+      bool operator()(Entry const &other) const {
+        if constexpr(std::is_same_v<Operator, OrOperation>) {
+          return rl(other) || rr(other);
+        }
+        else if constexpr(std::is_same_v<Operator, AndOperation>) {
+          return rl(other) && rr(other);
+        }
+      }
+
+      ExprOperators
+      ForEachOperator
+
+    private:
+      RangeL rl;
+      RangeR rr;
+    };
+
+    template<typename Range, typename Pred>
+    struct FilteredRangeExpr {
+      FilteredRangeExpr(Range &&range, Pred &&predicate) : range{ range }, predicate{ predicate } { }
+
+      bool operator()(Entry const &entry) {
+        return range(entry) && predicate(entry);
+      }
+
+      size_t size() {
+        if(sizeCalculated) {
+          return sz;
+        }
+
+        range.forEach([&](Entry const &entry) {
+          if (predicate(entry)) {
+            ++sz;
+          }
+        });
+      }
+
+      template<typename F>
+      void forEach(F functor) {
+        range.forEach([&](Entry const &entry) {
+          if (predicate(entry)) {
+            functor(entry);
+          }
+        });
+      }
+
+      ExprOperators
+      ForEachOperator
+
+    private:
+      size_t sz = 0;
+      bool sizeCalculated = false;
+      Range range;
+      Pred predicate;
+    };
+
     template<size_t Ind, typename It>
     struct Iterator {
       Iterator &operator++() {
         ++setIt;
+        return *this;
+      }
+
+      Iterator &operator--() {
+        --setIt;
         return *this;
       }
 
@@ -36,13 +176,58 @@ namespace CQL {
       std::shared_ptr<Entry const> ptr() const {
         return *setIt;
       }
+
     protected:
       friend struct Table;
+
+      template<size_t _Ind, typename _It>
+      friend struct Range;
 
       explicit Iterator(It &&it) : setIt(std::forward<It>(it)) { }
 
       It setIt;
     };
+
+    template<size_t Ind, typename It>
+    struct Range {
+      Range(It &&lo, It &&hi):
+        lo{ std::forward<It>(lo) }, hi{ std::forward<It>(hi) } { }
+
+      size_t size() const {
+        if (sizeCalculated) {
+          return sz;
+        }
+
+        sizeCalculated = true;
+        return sz = std::distance(lo.setIt, hi.setIt);
+      }
+
+      template<typename F>
+      void forEach(F functor) const {
+        for (auto it = lo; it != hi; ++it) {
+          functor(*it);
+        }
+      }
+
+      bool operator()(Entry const &other) const {
+        if (lo == hi)
+          return false;
+
+        return std::get<Ind>(*lo) <= std::get<Ind>(other)
+                                  && std::get<Ind>(other) <= std::get<Ind>(**std::prev(hi.setIt));
+      }
+
+      ExprOperators
+      ForEachOperator
+
+    private:
+      Iterator<Ind, It> const lo, hi;
+      mutable bool sizeCalculated = false;
+      mutable size_t sz = 0;
+    };
+
+#undef ForEachOperator
+#undef ExprOperators
 
     template<typename ...Args>
     std::shared_ptr<Entry const> emplace(Args &&...args) {
@@ -116,6 +301,11 @@ namespace CQL {
       return ptrLut.empty();
     }
 
+    void clear() {
+      clearAll<0>();
+      ptrLut.clear();
+    }
+
     std::shared_ptr<Entry> moveOut(std::shared_ptr<Entry const> const &entry) {
       erase(ptrLut.find(entry));
       return entry;
@@ -160,7 +350,47 @@ namespace CQL {
       std::get<N>(luts).emplace(std::move(dbEntry));
     }
 
+    template<size_t N, typename T1, typename T2>
+    auto range(T1 &&lb, T2 &&ub) {
+      return makeRange<N>(std::get<N>(luts).lower_bound(lb),
+                          std::get<N>(luts).upper_bound(ub));
+    }
+
+    auto all() {
+      return makeRange<std::tuple_size<Entry>::value>(ptrLut.begin(),
+                                                      ptrLut.end());
+    }
+
+    template<typename F>
+    auto pred(F &&predicate) {
+      return Predicate<F>(std::forward<F>(predicate));
+    }
+
   private:
+    template<typename Operator, typename LE, typename RE>
+    struct makeExprImpl {
+      auto operator()(LE &&le, RE &&re) {
+        return RangeExpr<Operator, LE, RE>{ std::forward<LE>(le), std::forward<RE>(re) };
+      }
+    };
+
+    template<typename LE, typename T>
+    struct makeExprImpl<AndOperation, LE, Predicate<T>> {
+      auto operator()(LE &&expr, Predicate<T> &&pred) {
+        return FilteredRangeExpr<LE, Predicate<T>>{ std::forward<LE>(expr), std::forward<Predicate<T>>(pred) };
+      }
+    };
+
+    template<typename Operator, typename LE, typename RE>
+    static auto makeExpr(LE &&le, RE &&re) {
+      return makeExprImpl<Operator, LE, RE>{}(std::forward<LE>(le), std::forward<RE>(re));
+    }
+
+    template<size_t N, typename It>
+    static auto makeRange(It &&itl, It &&itr) {
+      return Range<N, It>{ std::forward<It>(itl), std::forward<It>(itr) };
+    }
+
     template<size_t N>
     struct Compare {
       template<typename T>
@@ -234,6 +464,14 @@ namespace CQL {
       }
     }
 
+    template<size_t N>
+    void clearAll() {
+      if constexpr(N < std::tuple_size<Entry>::value) {
+        std::get<N>(luts).clear();
+        clearAll<N + 1>();
+      }
+    }
+
     template<size_t N, size_t Er, typename T>
     auto eraseIt(T const &it) {
       if constexpr(N < std::tuple_size<Entry>::value) {
@@ -250,10 +488,14 @@ namespace CQL {
 
     template<size_t N, typename T>
     auto findInLut(T const &val) const {
-      auto low = std::get<N>(luts).lower_bound(val);
-      auto hi = std::get<N>(luts).upper_bound(val);
-      if (auto f = std::find(low, hi, val); f != hi)
-        return f;
+      if constexpr(Custom::Unique<Entry, N>{}() == Custom::Uniqueness::NotUnique) {
+        auto[low, hi] = std::get<N>(luts).equal_range(val);
+        if (auto f = std::find(low, hi, val); f != hi)
+          return f;
+      }
+      else {
+          return std::get<N>(luts).find(val);
+      }
       return std::get<N>(luts).end();
     }
 

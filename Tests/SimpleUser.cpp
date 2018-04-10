@@ -26,7 +26,7 @@ TEST(Lookup, SimpleUser) {
   EXPECT_EQ(b->age, 55);
 }
 
-TEST(Lookup, SimpleUserFail) {
+TEST(LookupFail, SimpleUser) {
   CQL::Table<SimpleUser> db;
   db.emplace("Alice", 5);
   db.emplace("Bob", 55);

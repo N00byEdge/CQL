@@ -21,7 +21,7 @@ TEST(Lookup, IntSet) {
   EXPECT_EQ(std::get<0>(*b), 555);
 }
 
-TEST(Lookup, IntSetFail) {
+TEST(LookupFail, IntSet) {
   CQL::Table<std::tuple<int>> db{};
   db.emplace(5);
   db.emplace(555);
@@ -91,6 +91,20 @@ TEST(Erase, IntSet) {
   EXPECT_EQ(a.use_count(), 1);
 
   EXPECT_EQ(db.lookup<0>(5), nullptr);
+}
+
+TEST(Clear, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  auto const a = db.emplace(5);
+
+  EXPECT_EQ(db.size(), 1);
+  EXPECT_EQ(a.use_count(), 3);
+
+  db.clear();
+
+  EXPECT_EQ(db.size(), 0);
+  EXPECT_EQ(a.use_count(), 1);
 }
 
 TEST(Iterate, IntSet) {
@@ -174,7 +188,7 @@ TEST(OrderedIteration, IntSet) {
   EXPECT_EQ(vals, ans);
 }
 
-TEST(ROrderedIteration, IntSet) {
+TEST(OrderedIterationReversed, IntSet) {
   CQL::Table<std::tuple<int>> db;
 
   db.emplace(4);
@@ -188,6 +202,84 @@ TEST(ROrderedIteration, IntSet) {
   }
 
   auto const ans = std::vector<int>{ 6, 5, 4 };
+
+  EXPECT_EQ(vals, ans);
+}
+
+TEST(Range, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  for(int i = 0; i < 10; ++ i) {
+    db.emplace(i);
+  }
+
+  std::vector<int> vals;
+
+  db.range<0>(5, 7) >>= [&vals](auto const &val) {
+    vals.emplace_back(std::get<0>(val));
+  };
+
+  auto const ans = std::vector<int>{ 5, 6, 7 };
+
+  EXPECT_EQ(vals, ans);
+}
+
+TEST(RangeEmpty, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  for (int i = 0; i < 10; ++i) {
+    db.emplace(i);
+  }
+
+  std::vector<int> vals;
+
+  db.range<0>(80, 90) >>= [&vals](auto const &val) {
+    vals.emplace_back(std::get<0>(val));
+  };
+
+  auto const ans = std::vector<int>{};
+
+  EXPECT_EQ(vals, ans);
+}
+
+TEST(All, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  for (int i = 0; i < 4; ++i) {
+    db.emplace(i);
+  }
+
+  std::vector<int> vals;
+
+  db.all() >>= [&vals](auto const &val) {
+    vals.emplace_back(std::get<0>(val));
+  };
+
+  std::sort(vals.begin(), vals.end());
+
+  auto const ans = std::vector<int>{ 0, 1, 2, 3 };
+
+  EXPECT_EQ(vals, ans);
+}
+
+TEST(Predicate, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  for (int i = 0; i < 100; ++i) {
+    db.emplace(i);
+  }
+
+  std::vector<int> vals;
+
+  db.range<0>(10, 40) && db.pred([](auto const &val) {
+    return std::get<0>(val) % 19 == 0;
+  }) >>= [&vals](auto const &val) {
+    vals.emplace_back(std::get<0>(val));
+  };
+  
+  std::sort(vals.begin(), vals.end());
+
+  auto const ans = std::vector<int>{ 19, 38 };
 
   EXPECT_EQ(vals, ans);
 }

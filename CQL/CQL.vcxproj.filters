@@ -25,7 +25,4 @@
       <Filter>Header Files\CQL</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="..\appveyor.yml" />
-  </ItemGroup>
 </Project>

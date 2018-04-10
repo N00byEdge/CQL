@@ -52,6 +52,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="IntSet.cpp" />
+    <ClCompile Include="Point.cpp" />
     <ClCompile Include="SimpleUser.cpp" />
     <ClCompile Include="StringIntTuple.cpp" />
   </ItemGroup>
@@ -61,9 +62,12 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\.travis.yml" />
+    <None Include="..\appveyor.yml" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Point.h" />
     <ClInclude Include="SimpleUser.hpp" />
   </ItemGroup>
   <ItemGroup>

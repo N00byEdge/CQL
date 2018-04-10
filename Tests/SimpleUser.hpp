@@ -1,3 +1,5 @@
+#pragma once
+
 #include "CQL/Custom.hpp"
 
 #include <string>

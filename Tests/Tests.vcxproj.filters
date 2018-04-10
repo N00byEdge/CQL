@@ -10,6 +10,9 @@
     <ClCompile Include="StringIntTuple.cpp">
       <Filter>Test</Filter>
     </ClCompile>
+    <ClCompile Include="Point.cpp">
+      <Filter>Test</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Test">
@@ -21,9 +24,14 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="..\.travis.yml" />
+    <None Include="..\appveyor.yml" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SimpleUser.hpp">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Point.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>
