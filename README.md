@@ -137,7 +137,7 @@ CQL::Table<MyType> table;
 std::vector<MyType> smallAges;
 
 table.range<2>(0, 10) >>= [](MyType const &entry) {
-  tableDump.emplace_back(entry);
+  smallAges.emplace_back(entry);
 }
 ```
 
