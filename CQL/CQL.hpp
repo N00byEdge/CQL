@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CQL/Serialize.hpp"
 #include "CQL/Custom.hpp"
 
 #include <unordered_set>
@@ -529,6 +530,31 @@ namespace CQL {
       else {
         return true;
       }
+    }
+  };
+
+  template<typename T>
+  struct Detail::Serialize<Table<T>> {
+    void operator()(std::ostream &os, Table<T> const &table) const {
+      uint64_t const s = table.size();
+      serialize(os, s);
+      for (auto &entry : table) {
+        serialize(os, entry);
+      }
+    }
+  };
+
+  template<typename T>
+  struct Detail::Deserialize<Table<T>> {
+    Table<T> operator()(std::istream &is) const {
+      Table<T> table;
+      auto const s = static_cast<size_t>(deserialize<uint64_t>(is));
+
+      for(size_t i = 0; i < s; ++ i) {
+        table.emplace(deserialize<T>(is));
+      }
+
+      return table;
     }
   };
 }

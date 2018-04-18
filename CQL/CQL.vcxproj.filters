@@ -24,5 +24,8 @@
     <ClInclude Include="CQL\Custom.hpp">
       <Filter>Header Files\CQL</Filter>
     </ClInclude>
+    <ClInclude Include="CQL\Serialize.hpp">
+      <Filter>Header Files\CQL</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

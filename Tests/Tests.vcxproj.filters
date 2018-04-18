@@ -13,6 +13,9 @@
     <ClCompile Include="Point.cpp">
       <Filter>Test</Filter>
     </ClCompile>
+    <ClCompile Include="Serialize.cpp">
+      <Filter>Test</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Test">

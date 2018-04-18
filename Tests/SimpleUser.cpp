@@ -113,3 +113,45 @@ TEST(Uniqueness, SimpleUser) {
 
   EXPECT_EQ(db.size(), 2);
 }
+
+TEST(TableSerialization, SimpleUser) {
+  std::stringstream ss;
+  CQL::Table<SimpleUser> db;
+
+  std::vector<SimpleUser> v {{"Alice", 55}, {"Bob", 7}, {"Chris", 22}};
+
+  std::sort(std::begin(v), std::end(v));
+
+  for (auto &u : v)
+    db.emplace(u);
+
+  CQL::serialize(ss, db);
+
+  std::vector<SimpleUser> resultv;
+  auto const resultt = CQL::deserialize<CQL::Table<SimpleUser>>(ss);
+
+  for(auto &usr : resultt) {
+    resultv.emplace_back(usr);
+  }
+
+  EXPECT_EQ(resultv, v);
+}
+
+TEST(TableSerializationToVector, SimpleUser) {
+  std::stringstream ss;
+  CQL::Table<SimpleUser> db;
+
+  std::vector<SimpleUser> v{ { "Alice", 55 },{ "Bob", 7 },{ "Chris", 22 } };
+
+  std::sort(std::begin(v), std::end(v));
+
+  for (auto &u : v)
+    db.emplace(u);
+
+  CQL::serialize(ss, db);
+
+  auto result = CQL::deserialize<std::vector<SimpleUser>>(ss);
+  std::sort(std::begin(result), std::end(result));
+
+  EXPECT_EQ(v, result);
+}

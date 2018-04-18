@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CQL/Serialize.hpp"
 #include "CQL/Custom.hpp"
 
 #include <string>
@@ -17,6 +18,26 @@ struct SimpleUser {
   int id;
   std::string name;
   int age;
+
+  bool operator<(SimpleUser const &other) const {
+    return std::make_tuple(id, name, age)
+         < std::make_tuple(other.id, other.name, other.age);
+  }
+
+  bool operator==(SimpleUser const &other) const {
+    return std::make_tuple(id, name, age)
+        == std::make_tuple(other.id, other.name, other.age);
+  }
+
+  void serialize(std::ostream &os) const {
+    CQL::serialize(os, id, name, age);
+  }
+
+  static SimpleUser deserialize(std::istream &is) {
+    return SimpleUser(CQL::deserialize<int>(is),
+                      CQL::deserialize<std::string>(is),
+                      CQL::deserialize<int>(is));
+  }
 };
 
 namespace std {

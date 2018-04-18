@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="CQL.hpp" />
     <ClInclude Include="CQL\Custom.hpp" />
+    <ClInclude Include="CQL\Serialize.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>

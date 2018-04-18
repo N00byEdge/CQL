@@ -53,6 +53,7 @@
   <ItemGroup>
     <ClCompile Include="IntSet.cpp" />
     <ClCompile Include="Point.cpp" />
+    <ClCompile Include="Serialize.cpp" />
     <ClCompile Include="SimpleUser.cpp" />
     <ClCompile Include="StringIntTuple.cpp" />
   </ItemGroup>
