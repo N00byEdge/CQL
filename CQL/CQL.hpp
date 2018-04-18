@@ -56,50 +56,27 @@ namespace CQL {
       F f;
     };
 
-    template<typename Operator, typename RangeL, typename RangeR>
-    struct RangeExpr {
-      RangeExpr(RangeL &&rl, RangeR &&rr): rl{ std::forward<RangeL>(rl) }, rr{ std::forward<RangeR>(rr) } { }
+    template<typename RangeL, typename RangeR>
+    struct RangeUnion {
+      RangeUnion(RangeL &&rl, RangeR &&rr): rl{ std::forward<RangeL>(rl) }, rr{ std::forward<RangeR>(rr) } { }
 
       template<typename F>
       void forEach(F functor) {
-        auto each = [&](auto &smaller, auto &larger) {
-          if constexpr(std::is_same_v<Operator, OrOperation>) {
-            std::unordered_set<Entry const *> visited;
-            smaller.forEach([&](Entry const &entry) {
-              functor(entry);
-              visited.emplace(&entry);
-            });
+        std::unordered_set<Entry const *> visited;
+        rl.forEach([&](Entry const &entry) {
+          functor(entry);
+          visited.emplace(&entry);
+        });
 
-            larger.forEach([&](Entry const &entry) {
-              if (visited.find(&entry) == visited.end()) {
-                functor(entry);
-              }
-            });
+        rr.forEach([&](Entry const &entry) {
+          if (visited.find(&entry) == visited.end()) {
+            functor(entry);
           }
-          else if constexpr(std::is_same_v<Operator, AndOperation>) {
-            smaller.forEach([&](Entry const &entry) {
-              if (larger(entry)) {
-                functor(entry);
-              }
-            });
-          }
-        };
-
-        if (rl.size() < rr.size()) {
-          each(rl, rr);
-        }
-        else {
-          each(rr, rl);
-        }
+        });
       }
 
       bool operator()(Entry const &other) const {
-        if constexpr(std::is_same_v<Operator, OrOperation>) {
-          return rl(other) || rr(other);
-        }
-        else if constexpr(std::is_same_v<Operator, AndOperation>) {
-          return rl(other) && rr(other);
-        }
+        return rl(other) || rr(other);
       }
 
       ExprOperators
@@ -116,18 +93,6 @@ namespace CQL {
 
       bool operator()(Entry const &entry) {
         return range(entry) && predicate(entry);
-      }
-
-      size_t size() {
-        if(sizeCalculated) {
-          return sz;
-        }
-
-        range.forEach([&](Entry const &entry) {
-          if (predicate(entry)) {
-            ++sz;
-          }
-        });
       }
 
       template<typename F>
@@ -362,7 +327,7 @@ namespace CQL {
     }
 
     template<typename F>
-    auto pred(F &&predicate) {
+    static auto pred(F &&predicate) {
       return Predicate<F>(std::forward<F>(predicate));
     }
 
@@ -370,7 +335,12 @@ namespace CQL {
     template<typename Operator, typename LE, typename RE>
     struct makeExprImpl {
       auto operator()(LE &&le, RE &&re) {
-        return RangeExpr<Operator, LE, RE>{ std::forward<LE>(le), std::forward<RE>(re) };
+        if constexpr(std::is_same_v<Operator, AndOperation>) {
+          return makeExpr<AndOperation>(std::forward<LE>(le), pred([r = std::forward<RE>(re)](auto val) { return r(val); }));
+        }
+        else {
+          return RangeUnion<LE, RE>{ std::forward<LE>(le), std::forward<RE>(re) };
+        }
       }
     };
 
