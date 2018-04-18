@@ -20,13 +20,13 @@ struct SimpleUser {
   int age;
 
   bool operator<(SimpleUser const &other) const {
-    return std::make_tuple(id, name, age)
-         < std::make_tuple(other.id, other.name, other.age);
+    if (auto cmp = id - other.id; cmp) return cmp < 0;
+    if (auto cmp = name.compare(other.name); cmp) return cmp < 0;
+    return age - other.age < 0;
   }
 
   bool operator==(SimpleUser const &other) const {
-    return std::make_tuple(id, name, age)
-        == std::make_tuple(other.id, other.name, other.age);
+    return id == other.id && name == other.name && age == other.age;
   }
 
   void serialize(std::ostream &os) const {

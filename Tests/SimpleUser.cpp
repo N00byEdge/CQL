@@ -114,6 +114,20 @@ TEST(Uniqueness, SimpleUser) {
   EXPECT_EQ(db.size(), 2);
 }
 
+TEST(Serialization, SimpleUser) {
+  std::stringstream ss;
+  std::vector<SimpleUser> v{ { "Alice", 55 },{ "Bob", 7 },{ "Chris", 22 } };
+
+  CQL::serialize(ss, v);
+  
+  auto const resultv = CQL::deserialize<std::vector<SimpleUser>>(ss);
+
+  EXPECT_EQ(resultv.size(), v.size());
+  for (size_t i = 0; i < resultv.size() && i < v.size(); ++i) {
+    EXPECT_TRUE(resultv[i].operator==(v[i]));
+  }
+}
+
 TEST(TableSerialization, SimpleUser) {
   std::stringstream ss;
   CQL::Table<SimpleUser> db;
@@ -134,7 +148,10 @@ TEST(TableSerialization, SimpleUser) {
     resultv.emplace_back(usr);
   }
 
-  EXPECT_EQ(resultv, v);
+  EXPECT_EQ(resultv.size(), v.size());
+  for(size_t i = 0; i < resultv.size() && i < v.size(); ++ i) {
+    EXPECT_TRUE(resultv[i].operator==(v[i]));
+  }
 }
 
 TEST(TableSerializationToVector, SimpleUser) {
@@ -153,5 +170,8 @@ TEST(TableSerializationToVector, SimpleUser) {
   auto result = CQL::deserialize<std::vector<SimpleUser>>(ss);
   std::sort(std::begin(result), std::end(result));
 
-  EXPECT_EQ(v, result);
+  EXPECT_EQ(result.size(), v.size());
+  for (size_t i = 0; i < result.size() && i < v.size(); ++i) {
+    EXPECT_TRUE(result[i].operator==(v[i]));
+  }
 }
