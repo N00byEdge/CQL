@@ -1,0 +1,45 @@
+version: 1.4.{build}-{branch}
+
+image:
+  - Visual Studio 2017
+# - ubuntu
+
+shallow_clone: true
+clone_depth: 5
+
+matrix:
+  fast_finish: true
+  exclude:
+    - platform: Win32
+      image: ubuntu
+
+before_build:
+  - ps:  |
+      if($isWindows) {
+        nuget restore
+      }
+
+build_script:
+  - cmd: msbuild "C:\projects\cql\CQL.sln" /m /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+  - sh: |
+      mkdir build
+      cd build
+      cmake ..
+      cmake --build . --config $CONFIGURATION
+
+build:
+  parallel: true
+
+platform:
+  - Win32
+  - x64
+
+configuration:
+  - Release
+  - Debug
+
+test_script:
+  - sh: ./tests --gtest_output=xml:"tests.xml"
+  - cmd: 'C:\projects\cql\%PLATFORM%\%CONFIGURATION%\Tests.exe --gtest_output=xml:"tests.xml"'
+  - ps: (new-object net.webclient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\tests.xml))
+  
