@@ -53,4 +53,9 @@ namespace CQL::Custom {
       return Uniqueness::EnforceUnique;
     }
   };
+
+  template<>
+  struct DefaultLookup<SimpleUser> {
+    constexpr size_t operator()() const { return 0; }
+  };
 }

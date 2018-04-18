@@ -11,6 +11,12 @@
 #include <set>
 
 namespace CQL {
+  template<typename T, bool Instantiate>
+  struct ConditionalVar { T val; };
+
+  template<typename T>
+  struct ConditionalVar<T, false> { };
+
   template<typename Entry>
   struct Table {
     Table() = default;
@@ -199,7 +205,9 @@ namespace CQL {
       std::shared_ptr<Entry> ptr = std::make_shared<Entry>(std::forward<Args>(args)...);
       if (shouldInsert<0>(ptr)) {
         updateAll<0>(ptr);
-        ptrLut.emplace(ptr);
+        if constexpr(Custom::DefaultLookup<Entry>{}() == std::tuple_size_v<Entry>) {
+          defaultLUT.val.emplace(ptr);
+        }
         return ptr;
       }
       else {
@@ -209,17 +217,31 @@ namespace CQL {
 
     void erase(std::shared_ptr<Entry const> const &entry) {
       eraseAll<0>(entry);
-      ptrLut.erase(ptrLut.find(entry.get()));
+      if constexpr(Custom::DefaultLookup<Entry>{}() == std::tuple_size_v<Entry>) {
+        defaultLUT.val.erase(defaultLUT.val.find(entry.get()));
+      }
     }
 
     auto begin() const {
-      auto it = ptrLut.begin();
-      return Iterator<std::tuple_size<Entry>::value, decltype(it)>(std::move(it));
+      if constexpr(Custom::DefaultLookup<Entry>{}() == std::tuple_size_v<Entry>) {
+        auto it = defaultLUT.val.begin();
+        return Iterator<std::tuple_size<Entry>::value, decltype(it)>(std::move(it));
+      }
+      else {
+        auto it = std::get<Custom::DefaultLookup<Entry>{}()>(luts).begin();
+        return Iterator<Custom::DefaultLookup<Entry>{}(), decltype(it)>(std::move(it));
+      }
     }
 
     auto end() const {
-      auto it = ptrLut.end();
-      return Iterator<std::tuple_size<Entry>::value, decltype(it)>(std::move(it));
+      if constexpr(Custom::DefaultLookup<Entry>{}() == std::tuple_size_v<Entry>) {
+        auto it = defaultLUT.val.end();
+        return Iterator<std::tuple_size<Entry>::value, decltype(it)>(std::move(it));
+      }
+      else {
+        auto it = std::get<Custom::DefaultLookup<Entry>{}()>(luts).end();
+        return Iterator<Custom::DefaultLookup<Entry>{}(), decltype(it)>(std::move(it));
+      }
     }
 
     template<size_t Ind>
@@ -250,29 +272,33 @@ namespace CQL {
     auto erase(Iterator<Ind, T> &it) {
       if constexpr(Ind == std::tuple_size<Entry>::value) {
         eraseAll<0>(*(it.setIt));
-        return Iterator<Ind, T>(ptrLut.erase(it.setIt));
+        return Iterator<Ind, T>(defaultLUT.val.erase(it.setIt));
       }
       else {
-        ptrLut.erase(*(it.setIt));
+        if constexpr(Custom::DefaultLookup<Entry>{}() == std::tuple_size_v<Entry>) {
+          defaultLUT.val.erase(*(it.setIt));
+        }
         return eraseIt<std::tuple_size<Entry>::value, Ind>(it);
       }
     }
 
     size_t size() const {
-      return ptrLut.size();
+      return defaultLookup().size();
     }
 
     bool empty() const {
-      return ptrLut.empty();
+      return defaultLookup().empty();
     }
 
     void clear() {
       clearAll<0>();
-      ptrLut.clear();
+      if constexpr(Custom::DefaultLookup<Entry>{}() == std::tuple_size_v<Entry>) {
+        defaultLUT.val.clear();
+      }
     }
 
     std::shared_ptr<Entry> moveOut(std::shared_ptr<Entry const> const &entry) {
-      erase(ptrLut.find(entry));
+      erase(defaultLookup().find(entry));
       return entry;
     }
 
@@ -322,8 +348,8 @@ namespace CQL {
     }
 
     auto all() {
-      return makeRange<std::tuple_size<Entry>::value>(ptrLut.begin(),
-                                                      ptrLut.end());
+      return makeRange<std::tuple_size<Entry>::value>(defaultLookup().begin(),
+                                                      defaultLookup().end());
     }
 
     template<typename F>
@@ -416,7 +442,20 @@ namespace CQL {
     using Sets = decltype(makeSets(std::make_index_sequence<std::tuple_size<Entry>::value>{}));
 
     Sets luts{};
-    std::set<std::shared_ptr<Entry>, Compare<std::tuple_size<Entry>::value>> ptrLut;
+
+    ConditionalVar<std::set<std::shared_ptr<Entry>, Compare<std::tuple_size<Entry>::value>>,
+                   std::tuple_size_v<Entry> == CQL::Custom::DefaultLookup<Entry>{}()> defaultLUT;
+
+    auto constexpr &defaultLookup() const {
+      if constexpr(Custom::DefaultLookup<Entry>{}() != std::tuple_size_v<Entry>) {
+        static_assert(Custom::Unique<Entry, Custom::DefaultLookup<Entry>{}()>{}()
+                                              != Custom::Uniqueness::NotUnique);
+        return std::get<Custom::DefaultLookup<Entry>{}()>(luts);
+      }
+      else {
+        return defaultLUT.val;
+      }
+    }
 
     template<size_t N, typename T>
     void updateAll(T const &entry) {

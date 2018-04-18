@@ -8,7 +8,8 @@ TEST(Emplace, SimpleUser) {
   auto a = db.emplace("Alice", 5);
 
   EXPECT_NE(a, nullptr);
-  EXPECT_EQ(a.use_count(), std::tuple_size<SimpleUser>::value + 2);
+  // Make sure pointer table is not instantiated
+  EXPECT_EQ(a.use_count(), std::tuple_size<SimpleUser>::value + 1);
 }
 
 

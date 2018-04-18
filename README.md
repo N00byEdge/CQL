@@ -95,7 +95,7 @@ for(MyType const &val : table) {
 }
 ```
 
-Do note though, that this iteration has undefined order. If you want to iterate over a specific variable, you use `vbegin<N>()` and `vend<N>()` iterators:
+This iterates over the default lookup table for your objects. If one isn't defined, iteration order is the same as the address of the objects. If you want to iterate over a specific variable, you use `vbegin<N>()` and `vend<N>()` iterators:
 
 ```cpp
 CQL::Table<MyType> table;
@@ -162,5 +162,28 @@ And you can combine any valid range expression with a predicate:
 ```
 
 The above code first does a union of the sets where a `Point` lies on the x and y axis respectively. Then the predicate throws out any `Point`s where `x == y`.
+
+# Further customization
+CQL becomes more powerful the more you tell it about your types. You can specialize a data structure to tell CQL that you want to enforce uniqueness over, for example, user IDs:
+
+```cpp
+namespace CQL::Custom {
+  template<>
+  struct Unique<User, 0> {
+    constexpr Uniqueness operator()() const {
+      return Uniqueness::EnforceUnique;
+    }
+  };
+}
+```
+
+Or setting the default iteration order and lookup. Setting this value lets CQL use something else than the address of the objects for lookups and completely eliminates this table and its related code. This should be used if you have a small data type, like an integer, that is also enforced or, alternatively, assumed unique (see uniqueness in the example above).
+
+```cpp
+template<>
+struct DefaultLookup<SimpleUser> {
+  constexpr size_t operator()() const { return 0; }
+};
+```
 
 You can always look in the `Tests` directory to see some sample implementations of anything in this readme.
