@@ -65,16 +65,13 @@ namespace CQL {
     template<typename T>
     constexpr bool isContinuous = isContainer<T> && isContinuous_<T>();
 
-    template<typename ...Ts>
-    void eat(Ts...) { }
-
     template<typename T, typename = void>
     struct Serialize;
   }
 
-  template<typename ...Ts>
-  void serialize(std::ostream &os, Ts ... vals) {
-    Detail::eat((Detail::Serialize<Ts>{}(os, std::forward<Ts>(vals)),0)...);
+  template<typename T>
+  void serialize(std::ostream &os, T const &val) {
+    Detail::Serialize<T>{}(os, val);
   }
 
   namespace Detail {

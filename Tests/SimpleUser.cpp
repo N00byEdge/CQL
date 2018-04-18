@@ -116,7 +116,7 @@ TEST(Uniqueness, SimpleUser) {
 
 TEST(Serialization, SimpleUser) {
   std::stringstream ss;
-  std::vector<SimpleUser> v{ { "Alice", 55 },{ "Bob", 7 },{ "Chris", 22 } };
+  std::vector<SimpleUser> v{{ "Alice", 55 }, { "Bob", 7 }, { "Chris", 22 }};
 
   CQL::serialize(ss, v);
   
@@ -132,7 +132,7 @@ TEST(TableSerialization, SimpleUser) {
   std::stringstream ss;
   CQL::Table<SimpleUser> db;
 
-  std::vector<SimpleUser> v {{"Alice", 55}, {"Bob", 7}, {"Chris", 22}};
+  std::vector<SimpleUser> v{{"Alice", 55}, {"Bob", 7}, {"Chris", 22}};
 
   std::sort(std::begin(v), std::end(v));
 

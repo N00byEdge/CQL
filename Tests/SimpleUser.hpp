@@ -10,10 +10,10 @@ struct SimpleUser {
   SimpleUser(std::string &&name, const int age) : id{ []() {
     static int lastID = -1;
     return ++lastID;
-  }() }, name{ std::move(name) }, age{ age } { }
+  }() }, name{ name }, age{ age } { }
 
   SimpleUser(const int id, std::string &&name, const int age) : id(id),
-    name{ std::move(name) }, age{ age } { }
+    name{ name }, age{ age } { }
 
   int id;
   std::string name;
@@ -30,13 +30,16 @@ struct SimpleUser {
   }
 
   void serialize(std::ostream &os) const {
-    CQL::serialize(os, id, name, age);
+    CQL::serialize(os, id);
+    CQL::serialize(os, name);
+    CQL::serialize(os, age);
   }
 
   static SimpleUser deserialize(std::istream &is) {
-    return SimpleUser(CQL::deserialize<int>(is),
-                      CQL::deserialize<std::string>(is),
-                      CQL::deserialize<int>(is));
+    auto id  = CQL::deserialize<int>        (is);
+    auto s   = CQL::deserialize<std::string>(is);
+    auto age = CQL::deserialize<int>        (is);
+    return SimpleUser(id, std::move(s), age);
   }
 };
 
