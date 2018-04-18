@@ -28,7 +28,7 @@
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="..\.travis.yml" />
-    <None Include="..\appveyor.yml" />
+    <None Include="..\.appveyor.yml" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SimpleUser.hpp">

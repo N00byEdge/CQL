@@ -23,6 +23,9 @@
     <ClInclude Include="CQL\Custom.hpp" />
     <ClInclude Include="CQL\Serialize.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\README.md" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{213143DC-984D-41D7-9ECE-ED5BA9FB7F28}</ProjectGuid>

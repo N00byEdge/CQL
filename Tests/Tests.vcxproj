@@ -63,8 +63,8 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\.appveyor.yml" />
     <None Include="..\.travis.yml" />
-    <None Include="..\appveyor.yml" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
