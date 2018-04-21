@@ -107,7 +107,9 @@ namespace CQL {
 
     template<typename T>
     struct Serialize<T, std::void_t<
-        std::enable_if_t<isContinuous<T> && std::is_pod_v<typename T::value_type>
+        std::enable_if_t<isContinuous<T>
+     && std::is_trivial_v<typename T::value_type>
+     && std::is_standard_layout_v<typename T::value_type>
         >>> {
       void operator()(std::ostream &os, T const &val) { // Vector<int>, string etc optimization
         uint64_t const s = val.size();

@@ -115,8 +115,6 @@ namespace CQL {
       ForEachOperator
 
     private:
-      size_t sz = 0;
-      bool sizeCalculated = false;
       Range range;
       Pred predicate;
     };
@@ -165,15 +163,6 @@ namespace CQL {
       Range(It &&lo, It &&hi):
         lo{ std::forward<It>(lo) }, hi{ std::forward<It>(hi) } { }
 
-      size_t size() const {
-        if (sizeCalculated) {
-          return sz;
-        }
-
-        sizeCalculated = true;
-        return sz = std::distance(lo.setIt, hi.setIt);
-      }
-
       template<typename F>
       void forEach(F functor) const {
         for (auto it = lo; it != hi; ++it) {
@@ -194,8 +183,6 @@ namespace CQL {
 
     private:
       Iterator<Ind, It> const lo, hi;
-      mutable bool sizeCalculated = false;
-      mutable size_t sz = 0;
     };
 
 #undef ForEachOperator
