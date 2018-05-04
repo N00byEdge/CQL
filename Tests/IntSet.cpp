@@ -283,3 +283,63 @@ TEST(Predicate, IntSet) {
 
   EXPECT_EQ(vals, ans);
 }
+
+TEST(PredicateWithHalfRange, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  for (int i = 0; i < 100; ++i) {
+    db.emplace(i);
+  }
+
+  std::vector<int> vals;
+
+  db.range<0>(10, 40) && db.range<0>(0, 600) && db.pred([](auto const &val) {
+    return std::get<0>(val) % 10 == 0;
+  }) >>= [&vals](auto const &val) {
+    vals.emplace_back(std::get<0>(val));
+  };
+
+  auto const ans = std::vector<int>{ 10, 20, 30, 40 };
+
+  EXPECT_EQ(vals, ans);
+}
+
+TEST(PredicateWithHalfLowerRange, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  for (int i = 0; i < 100; ++i) {
+    db.emplace(i);
+  }
+
+  std::vector<int> vals;
+
+  db.range<0>(10, 40) && db.range<0>(-40, 20) && db.pred([](auto const &val) {
+    return std::get<0>(val) % 10 == 0;
+  }) >>= [&vals](auto const &val) {
+    vals.emplace_back(std::get<0>(val));
+  };
+
+  auto const ans = std::vector<int>{ 10, 20 };
+
+  EXPECT_EQ(vals, ans);
+}
+
+TEST(PredicateWithEmptyRange, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  for(int i = 0; i < 100; ++ i) {
+    db.emplace(i);
+  }
+
+  std::vector<int> vals;
+
+  db.range<0>(10, 40) && db.range<0>(500, 600) && db.pred([](auto const &val) {
+    return std::get<0>(val) % 10 == 0;
+  }) >>= [&vals](auto const &val) {
+    vals.emplace_back(std::get<0>(val));
+  };
+
+  auto const ans = std::vector<int>{};
+
+  EXPECT_EQ(vals, ans);
+}
