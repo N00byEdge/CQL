@@ -47,10 +47,12 @@ TEST(Serialize, int) {
 TEST(Serialize, intintinttuple) {
   std::stringstream ss;
 
-  CQL::serialize(ss, std::make_tuple(5, 5, 5));
+  auto const tpl = std::make_tuple(5, 5555, 9462472);
+
+  CQL::serialize(ss, tpl);
 
   auto const result = CQL::deserialize<std::tuple<int, int, int>>(ss);
-  EXPECT_EQ(result, std::make_tuple(5, 5, 5));
+  EXPECT_EQ(result, tpl);
 }
 
 TEST(Serialize, intset) {
