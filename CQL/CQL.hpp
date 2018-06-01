@@ -69,14 +69,12 @@ namespace CQL {
 
       template<typename F>
       void forEach(F functor) {
-        std::unordered_set<Entry const *> visited;
         rl.forEach([&](Entry const &entry) {
           functor(entry);
-          visited.emplace(&entry);
         });
 
         rr.forEach([&](Entry const &entry) {
-          if (visited.find(&entry) == visited.end()) {
+          if (!rl(entry)) {
             functor(entry);
           }
         });
@@ -158,31 +156,52 @@ namespace CQL {
       It setIt;
     };
 
-    template<size_t Ind, typename It>
+    template<size_t Ind, typename Lt, typename Ht, typename Tt>
     struct Range {
-      Range(It &&lo, It &&hi):
-        lo{ std::forward<It>(lo) }, hi{ std::forward<It>(hi) } { }
+      Range(Lt &&lo, Ht &&hi, Tt const &tbl):
+        lo{ std::forward<Lt>(lo) }, hi{ std::forward<Ht>(hi) }, tbl{tbl} { }
 
       template<typename F>
       void forEach(F functor) const {
-        for (auto it = lo; it != hi; ++it) {
-          functor(*it);
+        for (auto it = tbl.lower_bound(lo); it != tbl.upper_bound(hi); ++it) {
+          functor(**it);
         }
       }
 
       bool operator()(Entry const &other) const {
-        if (lo == hi)
-          return false;
-
-        return std::get<Ind>(*lo) <= std::get<Ind>(other)
-                                  && std::get<Ind>(other) <= std::get<Ind>(**std::prev(hi.setIt));
+        return lo <= std::get<Ind>(other)
+                  && std::get<Ind>(other) <= hi;
       }
 
       ExprOperators
       ForEachOperator
 
     private:
-      Iterator<Ind, It> const lo, hi;
+      std::tuple_element_t<Ind, Entry> const lo, hi;
+      Tt &tbl;
+    };
+
+    template<size_t Ind, typename Tt>
+    struct EntireTable {
+      EntireTable(Tt const &tbl):
+        tbl{tbl} { }
+
+      template<typename F>
+      void forEach(F functor) const {
+        for (auto &v : tbl) {
+          functor(*v);
+        }
+      }
+
+      bool operator()(Entry const &other) const {
+        return true;
+      }
+
+      ExprOperators
+      ForEachOperator
+
+    private:
+      Tt const &tbl;
     };
 
 #undef ForEachOperator
@@ -331,13 +350,19 @@ namespace CQL {
 
     template<size_t N, typename T1, typename T2>
     auto range(T1 &&lb, T2 &&ub) {
-      return makeRange<N>(std::get<N>(luts).lower_bound(lb),
-                          std::get<N>(luts).upper_bound(ub));
+      return makeRange<N>(std::forward<T1>(lb),
+                          std::forward<T2>(ub));
     }
 
     auto all() {
-      return makeRange<std::tuple_size<Entry>::value>(defaultLookup().begin(),
-                                                      defaultLookup().end());
+      auto constexpr customLookup = Custom::DefaultLookup<Entry>{}();
+      if constexpr(customLookup < std::tuple_size_v<Entry>) {
+        return EntireTable<customLookup, decltype(std::get<customLookup>(luts))>
+          { std::get<customLookup>(luts) };
+      }
+      else {
+        return EntireTable<std::tuple_size_v<Entry>, decltype(defaultLUT.val)>{ defaultLUT.val };
+      }
     }
 
     template<typename F>
@@ -370,9 +395,10 @@ namespace CQL {
       return makeExprImpl<Operator, LE, RE>{}(std::forward<LE>(le), std::forward<RE>(re));
     }
 
-    template<size_t N, typename It>
-    static auto makeRange(It &&itl, It &&itr) {
-      return Range<N, It>{ std::forward<It>(itl), std::forward<It>(itr) };
+    template<size_t N, typename Lt, typename Ht>
+    auto makeRange(Lt &&itl, Ht &&itr) {
+      return Range<N, Lt, Ht, decltype(std::get<N>(std::declval<decltype(luts)>()))>
+        { std::forward<Lt>(itl), std::forward<Ht>(itr), std::get<N>(luts) };
     }
 
     template<size_t N>
