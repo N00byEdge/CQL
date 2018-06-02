@@ -10,6 +10,8 @@
 #include <memory>
 #include <tuple>
 #include <set>
+#include "../Tests/SimpleUser.hpp"
+#include <use_ansi.h>
 
 namespace CQL {
   template<typename T, bool Instantiate>
@@ -17,6 +19,12 @@ namespace CQL {
 
   template<typename T>
   struct ConditionalVar<T, false> { };
+
+  template<typename T> // This exists in C++20, use std::remove_cvref ASAP.
+  struct remove_cvref { typedef std::remove_cv<std::remove_reference_t<T>> type; };
+
+  template<typename T>
+  using remove_cvref_v = typename remove_cvref<T>::type;
 
   template<typename Entry>
   struct Table {
@@ -141,7 +149,7 @@ namespace CQL {
         return setIt != other.setIt;
       }
 
-      std::shared_ptr<Entry const> ptr() const {
+      Entry const *ptr() const {
         return *setIt;
       }
 
@@ -207,48 +215,42 @@ namespace CQL {
 #undef ForEachOperator
 #undef ExprOperators
 
-    template<typename ...Args>
-    std::shared_ptr<Entry const> emplace(Args &&...args) {
-      std::shared_ptr<Entry> ptr = std::make_shared<Entry>(std::forward<Args>(args)...);
-      if (shouldInsert<0>(ptr)) {
-        updateAll<0>(ptr);
+    Entry const *emplace(std::unique_ptr<Entry> &&e) {
+      if (shouldInsert<0>(e)) {
+        auto ret = e.get();
         if constexpr(Custom::DefaultLookup<Entry>{}() == std::tuple_size_v<Entry>) {
-          defaultLUT.val.emplace(ptr);
+          updateAll<0>(e.get());
+          defaultLUT.val.emplace(std::forward<decltype(e)>(e));
         }
-        return ptr;
+        else {
+          updateAll<0>(std::forward<decltype(e)>(e));
+        }
+        return ret;
       }
-      else {
-        return nullptr;
-      }
+      return nullptr;
     }
 
-    void erase(std::shared_ptr<Entry const> const &entry) {
+    template<typename ...Args>
+    Entry const *emplace(Args &&...args) {
+      auto ptr = std::make_unique<Entry>(std::forward<Args>(args)...);
+      return emplace(std::move(ptr));
+    }
+
+    void erase(Entry const *entry) {
       eraseAll<0>(entry);
       if constexpr(Custom::DefaultLookup<Entry>{}() == std::tuple_size_v<Entry>) {
-        defaultLUT.val.erase(defaultLUT.val.find(entry.get()));
+        defaultLUT.val.erase(defaultLUT.val.find(entry));
       }
     }
 
     auto begin() const {
-      if constexpr(Custom::DefaultLookup<Entry>{}() == std::tuple_size_v<Entry>) {
-        auto it = defaultLUT.val.begin();
-        return Iterator<std::tuple_size<Entry>::value, decltype(it)>(std::move(it));
-      }
-      else {
-        auto it = std::get<Custom::DefaultLookup<Entry>{}()>(luts).begin();
-        return Iterator<Custom::DefaultLookup<Entry>{}(), decltype(it)>(std::move(it));
-      }
+      auto it = defaultLookup().begin();
+      return Iterator<std::tuple_size<Entry>::value, decltype(it)>(std::move(it));
     }
 
     auto end() const {
-      if constexpr(Custom::DefaultLookup<Entry>{}() == std::tuple_size_v<Entry>) {
-        auto it = defaultLUT.val.end();
-        return Iterator<std::tuple_size<Entry>::value, decltype(it)>(std::move(it));
-      }
-      else {
-        auto it = std::get<Custom::DefaultLookup<Entry>{}()>(luts).end();
-        return Iterator<Custom::DefaultLookup<Entry>{}(), decltype(it)>(std::move(it));
-      }
+      auto it = defaultLookup().end();
+      return Iterator<std::tuple_size<Entry>::value, decltype(it)>(std::move(it));
     }
 
     template<size_t Ind>
@@ -310,23 +312,32 @@ namespace CQL {
     }
 
     template<size_t N, typename T>
-    std::shared_ptr<Entry const> lookup(T const &val) {
-      std::shared_ptr<Entry> ret;
-      if (auto it = std::get<N>(luts).find(val); it != std::get<N>(luts).end())
-        ret = *it;
+    Entry const *lookup(T const &val) {
+      Entry const *ret = nullptr;
+      if (auto it = std::get<N>(luts).find(val); it != std::get<N>(luts).end()) {
+        if constexpr(CQL::Custom::DefaultLookup<Entry>{}() == N) {
+          ret = *it.get();
+        }
+        else {
+          ret = *it;
+        }
+      }
 
       return ret;
     }
 
+    // Returns false if the value already exists in a table where enforced uniqueness exists
     template<size_t N, typename T>
-    void update(std::shared_ptr<Entry const> const &entry, T &&newVal) {
-      std::shared_ptr<Entry> dbEntry = moveOutOfTable<N>(entry);
+    bool update(Entry const *entry, T &&newVal) {
       if constexpr(Custom::Unique<Entry, N>{}() == Custom::Uniqueness::EnforceUnique) {
         if (std::get<N>(luts).find(newVal) != std::get<N>(luts).end())
-          return;
+          return false;
       }
-      std::get<N>(*dbEntry) = newVal;
-      std::get<N>(luts).emplace(std::move(dbEntry));
+
+      auto dbEntry = moveOutOfTable<N>(entry);
+      std::get<N>(*(dbEntry.value())) = std::forward<T>(newVal);
+      std::get<N>(luts).emplace(std::move<decltype(dbEntry.value())>(dbEntry.value()));
+      return true;
     }
 
     template<size_t N, size_t OtherN, typename T, typename ItT>
@@ -343,7 +354,7 @@ namespace CQL {
 
     template<size_t N, typename T>
     void swap(std::shared_ptr<Entry const> const &entry, T &&newVal) {
-      std::shared_ptr<Entry> dbEntry = moveOutOfTable<N>(entry);
+      auto dbEntry = moveOutOfTable<N>(entry);
       std::swap(std::get<N>(*dbEntry), newVal);
       std::get<N>(luts).emplace(std::move(dbEntry));
     }
@@ -403,36 +414,28 @@ namespace CQL {
 
     template<size_t N>
     struct Compare {
-      template<typename T>
-      struct isEntry {
-        constexpr static bool value = std::is_same<T, std::shared_ptr<Entry>>::value
-                                   || std::is_same<T, std::shared_ptr<Entry const>>::value;
-      };
-
       template<typename T1, typename T2>
       bool operator()(T1 const &lhs, T2 const &rhs) const {
-        if constexpr(N == std::tuple_size<Entry>::value) {
-          if constexpr(isEntry<T1>::value && isEntry<T2>::value) {
-            return lhs < rhs;
+        auto val = [](auto const &v) {
+          if constexpr(N == std::tuple_size_v<Entry>) {
+            if constexpr(std::is_same<decltype(v), std::unique_ptr<Entry> const &>::value) {
+              return v.get();
+            }
+            else {
+              return v;
+            }
           }
-          else if constexpr(isEntry<T1>::value && !isEntry<T2>::value) {
-            return lhs.get() < rhs;
+          else if constexpr(std::is_same<decltype(v), Entry *const &>::value
+                         || std::is_same<decltype(v), Entry const *const &>::value
+                         || std::is_same<decltype(v), std::unique_ptr<Entry> const &>::value) {
+            return std::get<N>(*v);
           }
-          else if constexpr(!isEntry<T1>::value && isEntry<T2>::value) {
-            return lhs < rhs.get();
+          else {
+            return v;
           }
-        }
-        else {
-          if constexpr(isEntry<T1>::value && isEntry<T2>::value) {
-            return std::get<N>(*lhs) < std::get<N>(*rhs);
-          }
-          else if constexpr(isEntry<T1>::value) {
-            return std::get<N>(*lhs) < rhs;
-          }
-          else if constexpr(isEntry<T2>::value) {
-            return lhs < std::get<N>(*rhs);
-          }
-        }
+        };
+
+        return val(lhs) < val(rhs);
       }
 
       using is_transparent = void;
@@ -440,11 +443,14 @@ namespace CQL {
 
     template<size_t Idx>
     static decltype(auto) makeSet() {
-      if constexpr(Custom::Unique<Entry, Idx>{}() == Custom::Uniqueness::NotUnique) {
-        return std::multiset<std::shared_ptr<Entry>, Compare<Idx>>{};
+      if constexpr(Custom::DefaultLookup<Entry>{}() == Idx) {
+        return std::set<std::unique_ptr<Entry>, Compare<Idx>>{};
+      }
+      else if constexpr(Custom::Unique<Entry, Idx>{}() == Custom::Uniqueness::NotUnique) {
+        return std::multiset<Entry *, Compare<Idx>>{};
       }
       else {
-        return std::set<std::shared_ptr<Entry>, Compare<Idx>>{};
+        return std::set<Entry *, Compare<Idx>>{};
       }
     }
 
@@ -457,7 +463,7 @@ namespace CQL {
 
     Sets luts{};
 
-    ConditionalVar<std::set<std::shared_ptr<Entry>, Compare<std::tuple_size<Entry>::value>>,
+    ConditionalVar<std::set<std::unique_ptr<Entry>, Compare<std::tuple_size<Entry>::value>>,
                    std::tuple_size_v<Entry> == CQL::Custom::DefaultLookup<Entry>{}()> defaultLUT;
 
     auto constexpr &defaultLookup() const {
@@ -472,10 +478,20 @@ namespace CQL {
     }
 
     template<size_t N, typename T>
-    void updateAll(T const &entry) {
+    void updateAll(T &&entry) {
       if constexpr(N < std::tuple_size<Entry>::value) {
-        std::get<N>(luts).emplace(entry);
-        updateAll<N + 1>(entry);
+        if constexpr(N == Custom::DefaultLookup<Entry>{}()) {
+          updateAll<N + 1>(entry.get());
+          std::get<N>(luts).emplace(std::forward<T>(entry));
+        }
+        else if constexpr(std::is_same<T, std::unique_ptr<Entry>>::value) {
+          std::get<N>(luts).emplace(entry.get());
+          updateAll<N + 1>(std::forward<T>(entry));
+        }
+        else {
+          std::get<N>(luts).emplace(entry);
+          updateAll<N + 1>(entry);
+        }
       }
     }
 
@@ -513,7 +529,9 @@ namespace CQL {
     auto findInLut(T const &val) const {
       if constexpr(Custom::Unique<Entry, N>{}() == Custom::Uniqueness::NotUnique) {
         auto[low, hi] = std::get<N>(luts).equal_range(val);
-        if (auto f = std::find(low, hi, val); f != hi)
+        if (auto f = std::find_if(low, hi, [&](auto v) {
+          return &*v == &*val;
+        }); f != hi)
           return f;
       }
       else {
@@ -523,11 +541,8 @@ namespace CQL {
     }
 
     template<size_t N, typename T>
-    std::shared_ptr<Entry> moveOutOfTable(T const &val) {
-      auto it = findInLut<N>(val);
-      auto dbEntry = std::move(*it);
-      std::get<N>(luts).erase(it);
-      return dbEntry;
+    auto moveOutOfTable(T const &val) {
+      return std::get<N>(luts).extract(findInLut<N>(val));
     }
     
     template<size_t N, typename T>

@@ -7,7 +7,6 @@ TEST(Emplace, IntSet) {
   auto const a = db.emplace(5);
 
   EXPECT_NE(a, nullptr);
-  EXPECT_EQ(a.use_count(), 3);
 }
 
 TEST(Lookup, IntSet) {
@@ -83,12 +82,10 @@ TEST(Erase, IntSet) {
                  db.emplace(6);
 
   EXPECT_EQ(db.size(), 3);
-  EXPECT_EQ(a.use_count(), 3);
 
   db.erase(a);
 
   EXPECT_EQ(db.size(), 2);
-  EXPECT_EQ(a.use_count(), 1);
 
   EXPECT_EQ(db.lookup<0>(5), nullptr);
 }
@@ -99,12 +96,10 @@ TEST(Clear, IntSet) {
   auto const a = db.emplace(5);
 
   EXPECT_EQ(db.size(), 1);
-  EXPECT_EQ(a.use_count(), 3);
 
   db.clear();
 
   EXPECT_EQ(db.size(), 0);
-  EXPECT_EQ(a.use_count(), 1);
 }
 
 TEST(Iterate, IntSet) {
