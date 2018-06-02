@@ -11,7 +11,6 @@
 #include <tuple>
 #include <set>
 #include "../Tests/SimpleUser.hpp"
-#include <use_ansi.h>
 
 namespace CQL {
   template<typename T, bool Instantiate>
