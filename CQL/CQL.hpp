@@ -364,20 +364,14 @@ namespace CQL {
                           std::forward<T2>(ub));
     }
 
-    auto all() {
-      auto constexpr customLookup = Custom::DefaultLookup<Entry>{}();
-      if constexpr(customLookup < std::tuple_size_v<Entry>) {
-        return EntireTable<customLookup, decltype(std::get<customLookup>(luts))>
-          { std::get<customLookup>(luts) };
-      }
-      else {
-        return EntireTable<std::tuple_size_v<Entry>, decltype(defaultLUT.val)>{ defaultLUT.val };
-      }
+    auto all() const {
+      auto &tbl = defaultLookup();
+      return EntireTable<Custom::DefaultLookup<Entry>{}(), decltype(tbl)>{tbl};
     }
 
     template<typename F>
-    static auto pred(F &&predicate) {
-      return Predicate<F>(std::forward<F>(predicate));
+    auto pred(F &&predicate) {
+      return all() && Predicate<F>(std::forward<F>(predicate));
     }
 
   private:
