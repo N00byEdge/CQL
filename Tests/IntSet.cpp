@@ -93,7 +93,7 @@ TEST(Erase, IntSet) {
 TEST(Clear, IntSet) {
   CQL::Table<std::tuple<int>> db;
 
-  auto const a = db.emplace(5);
+  db.emplace(5);
 
   EXPECT_EQ(db.size(), 1);
 
