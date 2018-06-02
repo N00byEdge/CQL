@@ -370,8 +370,8 @@ namespace CQL {
     }
 
     template<typename F>
-    auto pred(F &&predicate) {
-      return all() && Predicate<F>(std::forward<F>(predicate));
+    static auto pred(F &&predicate) {
+      return Predicate<F>(std::forward<F>(predicate));
     }
 
   private:
