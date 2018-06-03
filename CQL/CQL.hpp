@@ -305,9 +305,10 @@ namespace CQL {
       }
     }
 
-    std::shared_ptr<Entry> moveOut(std::shared_ptr<Entry const> const &entry) {
-      erase(defaultLookup().find(entry));
-      return entry;
+    std::unique_ptr<Entry> extract(Entry const *entry) {
+      auto ptr = std::move(defaultLookup().extract(defaultLookup().find(entry)).value());
+      eraseAll<0>(ptr.get());
+      return ptr;
     }
 
     template<size_t N, typename T>
@@ -333,29 +334,36 @@ namespace CQL {
           return false;
       }
 
-      auto dbEntry = moveOutOfTable<N>(entry);
-      std::get<N>(*(dbEntry.value())) = std::forward<T>(newVal);
-      std::get<N>(luts).emplace(std::move<decltype(dbEntry.value())>(dbEntry.value()));
+      auto dbEntry = std::move(moveOutOfTable<N>(entry).value());
+      std::get<N>(*dbEntry) = std::forward<T>(newVal);
+      std::get<N>(luts).emplace(std::move(dbEntry));
       return true;
     }
 
     template<size_t N, size_t OtherN, typename T, typename ItT>
-    void update(Iterator<OtherN, ItT> const &entry, T &&newVal) {
+    bool update(Iterator<OtherN, ItT> const &entry, T &&newVal) {
       if constexpr(N == OtherN) {
         throw std::runtime_error {
           "You cannot update the value of an object when you are iterating over the value you want to change"
         };
       }
       else {
-        update(*(entry.setIt));
+        return update(*(entry.setIt));
       }
     }
 
+    // Returns false if the value already exists in a table where enforced uniqueness exists
     template<size_t N, typename T>
-    void swap(std::shared_ptr<Entry const> const &entry, T &&newVal) {
-      auto dbEntry = moveOutOfTable<N>(entry);
+    bool swap(Entry const *entry, T &newVal) {
+      if constexpr(Custom::Unique<Entry, N>{}() == Custom::Uniqueness::EnforceUnique) {
+        if (std::get<N>(luts).find(newVal) != std::get<N>(luts).end())
+          return false;
+      }
+
+      auto dbEntry = std::move(moveOutOfTable<N>(entry).value());
       std::swap(std::get<N>(*dbEntry), newVal);
       std::get<N>(luts).emplace(std::move(dbEntry));
+      return true;
     }
 
     template<size_t N, typename T1, typename T2>
@@ -371,7 +379,7 @@ namespace CQL {
 
     template<typename F>
     static auto pred(F &&predicate) {
-      return Predicate<F>(std::forward<F>(predicate));
+      return Predicate<F>{std::forward<F>(predicate)};
     }
 
   private:
@@ -462,7 +470,18 @@ namespace CQL {
     auto constexpr &defaultLookup() const {
       if constexpr(Custom::DefaultLookup<Entry>{}() != std::tuple_size_v<Entry>) {
         static_assert(Custom::Unique<Entry, Custom::DefaultLookup<Entry>{}()>{}()
-                                              != Custom::Uniqueness::NotUnique);
+                                         != Custom::Uniqueness::NotUnique);
+        return std::get<Custom::DefaultLookup<Entry>{}()>(luts);
+      }
+      else {
+        return defaultLUT.val;
+      }
+    }
+
+    auto constexpr &defaultLookup() {
+      if constexpr(Custom::DefaultLookup<Entry>{}() != std::tuple_size_v<Entry>) {
+        static_assert(Custom::Unique<Entry, Custom::DefaultLookup<Entry>{}()>{}()
+                                         != Custom::Uniqueness::NotUnique);
         return std::get<Custom::DefaultLookup<Entry>{}()>(luts);
       }
       else {
@@ -491,7 +510,9 @@ namespace CQL {
     template<size_t N, typename T>
     void eraseAll(T const &entry) {
       if constexpr(N < std::tuple_size<Entry>::value) {
-        std::get<N>(luts).erase(findInLut<N>(entry));
+        if (auto it = findInLut<N>(entry); it != std::get<N>(luts).end()) {
+          std::get<N>(luts).erase(it);
+        }
         eraseAll<N + 1>(entry);
       }
     }

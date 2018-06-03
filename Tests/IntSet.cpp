@@ -338,3 +338,54 @@ TEST(PredicateWithEmptyRange, IntSet) {
 
   EXPECT_EQ(vals, ans);
 }
+
+TEST(Extract, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  for (int i = 0; i < 100; ++i) {
+    db.emplace(i);
+  }
+
+  EXPECT_EQ(db.size(), 100);
+
+  auto val = db.lookup<0>(10);
+  auto src = db.extract(val);
+
+  EXPECT_EQ(db.size(), 99);
+
+  EXPECT_EQ(std::get<0>(*src), 10);
+
+  auto v2 = db.lookup<0>(10);
+
+  EXPECT_EQ(v2, nullptr);
+}
+
+TEST(Swap, IntSet) {
+  CQL::Table<std::tuple<int>> db;
+
+  for (int i = 0; i < 100; ++i) {
+    db.emplace(i);
+  }
+
+  EXPECT_EQ(db.size(), 100);
+
+  auto val = db.lookup<0>(10);
+  auto swapinval = 101;
+
+  auto swapresult = db.swap<0>(val, swapinval);
+  EXPECT_EQ(swapresult, true);
+
+  auto oldval = db.lookup<0>(10);
+
+  EXPECT_EQ(oldval, nullptr);
+
+  auto newval = db.lookup<0>(101);
+
+  EXPECT_NE(newval, nullptr);
+
+  EXPECT_EQ(std::get<0>(*val), 101);
+  EXPECT_EQ(std::get<0>(*newval), 101);
+  EXPECT_EQ(swapinval, 10);
+  
+  EXPECT_EQ(db.size(), 100);
+}
