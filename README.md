@@ -81,7 +81,7 @@ That's it. Now you can store your type in CQL and do fast queries on any of thes
 # Lookups
 First of all, all lookup tables use transparent comparators. Feel free to use lookup methods with anything comparable to your type parts.
 
-To get your data out again, the simplest method is `std::shared_ptr<Entry const> Table::lookup<N>(T const &)`. This will do a lookup on the `N`th part of your type and grab one that is equal and hand you a shared pointer to it.
+To get your data out again, the simplest method is `Entry const *Table::lookup<N>(T const &)`. This will do a lookup on the `N`th part of your type and grab one that is equal and hand you a pointer to it.
 
 # Iteration
 You can iterate over the container like any other:
@@ -113,7 +113,7 @@ There are also `rvbegin<N>()` and `rvend<N>()` for your reverse iteration needs.
 
 Something that you might notice quite quickly is that when you're working with your objects inside the tables, you are in one way or another handed a `MyType const &`. This is to prevent accidental writing to the non-mutable members. Writing to these will not update the lookup tables, so please be `const` correct.
 
-You can update values by asking the `Table` nicely. Just pass your `std::shared_ptr<Entry const>` into `Table::update(std::shared_ptr<Entry const>, T &&newVal)` with the value you want to set. There are also similar functions like `Table::swap(std::shared_ptr<Entry const>, T &&newVal)` (swaps new value with the current one). You can also pass these an iterator and change any part that you're **not currently iterating over**.
+You can update values by asking the `Table` nicely. Just pass your `Entry const *` into `Table::update(Entry const *, T &&newVal)` with the value you want to set. There are also similar functions like `Table::swap(Entry const *, T &&newVal)` (swaps new value with the current one). You can also pass these an iterator and change any part that you're **not currently iterating over**.
 
 # Queries
 Now you want to get down and dirty with some awesome queries without wasting any time looping through your entire table in linear time.
