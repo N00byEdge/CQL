@@ -10,7 +10,6 @@
 #include <memory>
 #include <tuple>
 #include <set>
-#include "../Tests/SimpleUser.hpp"
 
 namespace CQL {
   template<typename T, bool Instantiate>
