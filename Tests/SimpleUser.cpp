@@ -50,6 +50,40 @@ TEST(Update, SimpleUser) {
   EXPECT_EQ(fail, nullptr);
 }
 
+TEST(UpdateSame, SimpleUser) {
+  CQL::Table<SimpleUser> db;
+
+  auto const a = db.emplace("Alice", 55);
+
+  auto const aid = std::get<0>(*a);
+  auto const updateResult = db.update<0>(a, aid);
+  EXPECT_EQ(updateResult, true);
+
+  EXPECT_EQ(db.size(), 1);
+  auto const find = db.lookup<0>(aid);
+  EXPECT_NE(find, nullptr);
+  auto const found = std::get<0>(*find);
+  EXPECT_EQ(found, aid);
+}
+
+TEST(UpdateFail, SimpleUser) {
+  CQL::Table<SimpleUser> db;
+
+  auto const a = db.emplace("Alice", 55);
+  auto const b = db.emplace("Bob", 5);
+                 db.emplace("Chris", 8);
+
+  auto const aid = std::get<0>(*a);
+  auto const updateResult = db.update<0>(a, std::get<0>(*b));
+  EXPECT_EQ(updateResult, false);
+
+  EXPECT_EQ(db.size(), 3);
+  auto const find = db.lookup<0>(aid);
+  EXPECT_NE(find, nullptr);
+  auto const found = std::get<0>(*find);
+  EXPECT_EQ(found, aid);
+}
+
 TEST(UpdateMove, SimpleUser) {
   CQL::Table<SimpleUser> db;
                  db.emplace("Alice", 55);

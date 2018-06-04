@@ -315,7 +315,7 @@ namespace CQL {
       Entry const *ret = nullptr;
       if (auto it = std::get<N>(luts).find(val); it != std::get<N>(luts).end()) {
         if constexpr(CQL::Custom::DefaultLookup<Entry>{}() == N) {
-          ret = *it.get();
+          ret = it->get();
         }
         else {
           ret = *it;
@@ -329,8 +329,12 @@ namespace CQL {
     template<size_t N, typename T>
     bool update(Entry const *entry, T &&newVal) {
       if constexpr(Custom::Unique<Entry, N>{}() == Custom::Uniqueness::EnforceUnique) {
-        if (std::get<N>(luts).find(newVal) != std::get<N>(luts).end())
+        if (auto f = std::get<N>(luts).find(newVal); f != std::get<N>(luts).end() && &**f != entry) {
           return false;
+        }
+        else if (&**f == entry) {
+          return true;
+        }
       }
 
       auto dbEntry = std::move(moveOutOfTable<N>(entry).value());

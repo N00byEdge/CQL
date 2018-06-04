@@ -36,7 +36,8 @@ TEST(Update, IntSet) {
   auto const a = db.emplace(5);
                  db.emplace(6);
 
-  db.update<0>(a, 7);
+  auto updateResult = db.update<0>(a, 7);
+  EXPECT_EQ(updateResult, true);
 
   EXPECT_NE(a, nullptr);
   EXPECT_EQ(std::get<0>(*a), 7);
