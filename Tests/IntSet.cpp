@@ -66,7 +66,7 @@ TEST(Size, IntSet) {
 
   EXPECT_EQ(db.size(), 1);
 
-  for(size_t i = 0; i < 4; ++ i)
+  for(std::size_t i = 0; i < 4; ++ i)
     db.emplace(5);
 
   EXPECT_EQ(db.size(), 5);

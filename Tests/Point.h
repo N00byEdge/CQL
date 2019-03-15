@@ -7,7 +7,7 @@ struct Point : std::pair<int, int> {
 };
 
 namespace std {
-  template<size_t Ind>
+  template<std::size_t Ind>
   constexpr auto &get(Point &p) noexcept {
     if constexpr(Ind == 0)
       return p.first;
@@ -15,7 +15,7 @@ namespace std {
       return p.second;
   }
 
-  template<size_t Ind>
+  template<std::size_t Ind>
   constexpr auto &get(Point const &p) noexcept {
     if constexpr(Ind == 0)
       return p.first;
@@ -24,7 +24,7 @@ namespace std {
   }
 }
 
-template <> struct std::tuple_size<Point> : public std::integral_constant<size_t, 2> { };
-template<size_t Ind> struct std::tuple_element<Ind, Point> {
+template <> struct std::tuple_size<Point> : public std::integral_constant<std::size_t, 2> { };
+template<std::size_t Ind> struct std::tuple_element<Ind, Point> {
   using type = decltype(std::get<Ind>(std::declval<Point>()));
 };

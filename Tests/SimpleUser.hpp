@@ -44,7 +44,7 @@ struct SimpleUser {
 };
 
 namespace std {
-  template<size_t Ind>
+  template<std::size_t Ind>
   constexpr auto &get(SimpleUser &su) noexcept {
     if constexpr(Ind == 0)
       return su.id;
@@ -54,7 +54,7 @@ namespace std {
       return su.age;
   }
 
-  template<size_t Ind>
+  template<std::size_t Ind>
   constexpr auto &get(SimpleUser const &su) noexcept {
     if constexpr(Ind == 0)
       return su.id;
@@ -65,8 +65,8 @@ namespace std {
   }
 }
 
-template <> struct std::tuple_size<SimpleUser> : public std::integral_constant<size_t, 3> { };
-template<size_t Ind> struct std::tuple_element<Ind, SimpleUser> {
+template <> struct std::tuple_size<SimpleUser> : public std::integral_constant<std::size_t, 3> { };
+template<std::size_t Ind> struct std::tuple_element<Ind, SimpleUser> {
   using type = decltype(std::get<SimpleUser, Ind>);
 };
 
@@ -80,6 +80,6 @@ namespace CQL::Custom {
 
   template<>
   struct DefaultLookup<SimpleUser> {
-    constexpr size_t operator()() const { return 0; }
+    constexpr std::size_t operator()() const { return 0; }
   };
 }

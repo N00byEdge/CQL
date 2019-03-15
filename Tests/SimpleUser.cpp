@@ -155,7 +155,7 @@ TEST(Serialization, SimpleUser) {
   auto const resultv = CQL::deserialize<std::vector<SimpleUser>>(ss);
 
   EXPECT_EQ(resultv.size(), v.size());
-  for (size_t i = 0; i < resultv.size() && i < v.size(); ++i) {
+  for (std::size_t i = 0; i < resultv.size() && i < v.size(); ++i) {
     EXPECT_TRUE(resultv[i].operator==(v[i]));
   }
 }
@@ -181,7 +181,7 @@ TEST(TableSerialization, SimpleUser) {
   }
 
   EXPECT_EQ(resultv.size(), v.size());
-  for(size_t i = 0; i < resultv.size() && i < v.size(); ++ i) {
+  for (std::size_t i = 0; i < resultv.size() && i < v.size(); ++ i) {
     EXPECT_TRUE(resultv[i].operator==(v[i]));
   }
 }
@@ -203,7 +203,7 @@ TEST(TableSerializationToVector, SimpleUser) {
   std::sort(std::begin(result), std::end(result));
 
   EXPECT_EQ(result.size(), v.size());
-  for (size_t i = 0; i < result.size() && i < v.size(); ++i) {
+  for (std::size_t i = 0; i < result.size() && i < v.size(); ++i) {
     EXPECT_TRUE(result[i].operator==(v[i]));
   }
 }

@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <iterator>
+#include <cstddef>
 #include <utility>
 #include <tuple>
 
@@ -29,7 +30,7 @@ namespace CQL {
       using type = std::pair<removeConstConditional<Ts>...>;
     };
 
-    template<typename T, size_t s>
+    template<typename T, std::size_t s>
     struct tupleRemoveConst_<std::array<T, s>> {
       using type = std::array<removeConstConditional<T>, s>;
     };
@@ -40,7 +41,7 @@ namespace CQL {
     template<typename T> struct isTuploid_ : std::false_type { };
     template<typename ...Ts> struct isTuploid_<std::tuple<Ts...>> : std::true_type { };
     template<typename ...Ts> struct isTuploid_<std::pair<Ts...>> : std::true_type { };
-    template<typename T, size_t s> struct isTuploid_<std::array<T, s>> : std::true_type { };
+    template<typename T, std::size_t s> struct isTuploid_<std::array<T, s>> : std::true_type { };
 
     template<typename T>
     constexpr bool isTuploid = isTuploid_<T>();
@@ -75,7 +76,7 @@ namespace CQL {
   }
 
   namespace Detail {
-    template<size_t idx, typename Tuple_t>
+    template<std::size_t idx, typename Tuple_t>
     void serializeTuploid(std::ostream &os, Tuple_t const &t) {
       if constexpr (idx < std::tuple_size_v<Tuple_t>) {
         serialize(os, std::get<idx>(t));
@@ -128,7 +129,7 @@ namespace CQL {
   }
 
   namespace Detail {
-    template<typename Tuple_t, size_t idx>
+    template<typename Tuple_t, std::size_t idx>
     void deserializeTuploid(std::istream &is, Tuple_t &t) {
       if constexpr (idx < std::tuple_size_v<Tuple_t>) {
         std::get<idx>(t) = deserialize<std::tuple_element_t<idx, Tuple_t>>(is);
@@ -150,7 +151,7 @@ namespace CQL {
           return temp;
         }
         else if constexpr(isContainer<T>) {
-          auto s = static_cast<size_t>(deserialize<uint64_t>(is));
+          auto s = static_cast<std::size_t>(deserialize<uint64_t>(is));
           T container;
           for (auto it = std::insert_iterator<T>{ container, std::begin(container) }; s --> 0;) {
             it = deserialize<tupleRemoveConst<typename T::value_type>>(is);
