@@ -10,7 +10,7 @@ namespace CQL::Custom {
     AssumeUnique,
   };
 
-  template<typename T, size_t Idx>
+  template<typename T, std::size_t Idx>
   struct Unique {
     constexpr Uniqueness operator()() const {
       return Uniqueness::NotUnique;
@@ -19,6 +19,6 @@ namespace CQL::Custom {
 
   template<typename T>
   struct DefaultLookup {
-    constexpr size_t operator()() const { return std::tuple_size_v<T>; }
+    constexpr std::size_t operator()() const { return std::tuple_size_v<T>; }
   };
 }

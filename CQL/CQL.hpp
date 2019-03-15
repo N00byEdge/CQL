@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <type_traits>
 #include <algorithm>
+#include <cstddef>
 #include <utility>
 #include <memory>
 #include <tuple>
@@ -123,7 +124,7 @@ namespace CQL {
       Pred predicate;
     };
 
-    template<size_t Ind, typename It>
+    template<std::size_t Ind, typename It>
     struct Iterator {
       Iterator &operator++() {
         ++setIt;
@@ -154,7 +155,7 @@ namespace CQL {
     protected:
       friend struct Table;
 
-      template<size_t _Ind, typename _It>
+      template<std::size_t _Ind, typename _It>
       friend struct Range;
 
       explicit Iterator(It &&it) : setIt(std::forward<It>(it)) { }
@@ -162,7 +163,7 @@ namespace CQL {
       It setIt;
     };
 
-    template<size_t Ind, typename Lt, typename Ht, typename Tt>
+    template<std::size_t Ind, typename Lt, typename Ht, typename Tt>
     struct Range {
       Range(Lt &&lo, Ht &&hi, Tt const &tbl):
         lo{ std::forward<Lt>(lo) }, hi{ std::forward<Ht>(hi) }, tbl{tbl} { }
@@ -187,7 +188,7 @@ namespace CQL {
       Tt &tbl;
     };
 
-    template<size_t Ind, typename Tt>
+    template<std::size_t Ind, typename Tt>
     struct EntireTable {
       EntireTable(Tt const &tbl):
         tbl{tbl} { }
@@ -251,31 +252,31 @@ namespace CQL {
       return Iterator<std::tuple_size<Entry>::value, decltype(it)>(std::move(it));
     }
 
-    template<size_t Ind>
+    template<std::size_t Ind>
     auto vbegin() const {
       auto it = std::get<Ind>(luts).begin();
       return Iterator<Ind, decltype(it)>(std::move(it));
     }
 
-    template<size_t Ind>
+    template<std::size_t Ind>
     auto rvbegin() const {
       auto it = std::get<Ind>(luts).rbegin();
       return Iterator<Ind, decltype(it)>(std::move(it));
     }
 
-    template<size_t Ind>
+    template<std::size_t Ind>
     auto vend() const {
       auto it = std::get<Ind>(luts).end();
       return Iterator<Ind, decltype(it)>(std::move(it));
     }
 
-    template<size_t Ind>
+    template<std::size_t Ind>
     auto rvend() const {
       auto it = std::get<Ind>(luts).rend();
       return Iterator<Ind, decltype(it)>(std::move(it));
     }
 
-    template<size_t Ind, typename T>
+    template<std::size_t Ind, typename T>
     auto erase(Iterator<Ind, T> &it) {
       if constexpr(Ind == std::tuple_size<Entry>::value) {
         eraseAll<0>(*(it.setIt));
@@ -289,7 +290,7 @@ namespace CQL {
       }
     }
 
-    size_t size() const {
+    std::size_t size() const {
       return defaultLookup().size();
     }
 
@@ -310,7 +311,7 @@ namespace CQL {
       return ptr;
     }
 
-    template<size_t N, typename T>
+    template<std::size_t N, typename T>
     Entry const *lookup(T const &val) {
       Entry const *ret = nullptr;
       if (auto it = std::get<N>(luts).find(val); it != std::get<N>(luts).end()) {
@@ -326,7 +327,7 @@ namespace CQL {
     }
 
     // Returns false if the value already exists in a table where enforced uniqueness exists
-    template<size_t N, typename T>
+    template<std::size_t N, typename T>
     bool update(Entry const *entry, T &&newVal) {
       if constexpr(Custom::Unique<Entry, N>{}() == Custom::Uniqueness::EnforceUnique) {
         if (auto f = std::get<N>(luts).find(newVal); f != std::get<N>(luts).end() && &**f != entry) {
@@ -343,7 +344,7 @@ namespace CQL {
       return true;
     }
 
-    template<size_t N, size_t OtherN, typename T, typename ItT>
+    template<std::size_t N, std::size_t OtherN, typename T, typename ItT>
     bool update(Iterator<OtherN, ItT> const &entry, T &&newVal) {
       if constexpr(N == OtherN) {
         throw std::runtime_error {
@@ -356,7 +357,7 @@ namespace CQL {
     }
 
     // Returns false if the value already exists in a table where enforced uniqueness exists
-    template<size_t N, typename T>
+    template<std::size_t N, typename T>
     bool swap(Entry const *entry, T &newVal) {
       if constexpr(Custom::Unique<Entry, N>{}() == Custom::Uniqueness::EnforceUnique) {
         if (std::get<N>(luts).find(newVal) != std::get<N>(luts).end())
@@ -369,7 +370,7 @@ namespace CQL {
       return true;
     }
 
-    template<size_t N, typename T1, typename T2>
+    template<std::size_t N, typename T1, typename T2>
     auto range(T1 &&lb, T2 &&ub) {
       return makeRange<N>(std::forward<T1>(lb),
                           std::forward<T2>(ub));
@@ -410,13 +411,13 @@ namespace CQL {
       return makeExprImpl<Operator, LE, RE>{}(std::forward<LE>(le), std::forward<RE>(re));
     }
 
-    template<size_t N, typename Lt, typename Ht>
+    template<std::size_t N, typename Lt, typename Ht>
     auto makeRange(Lt &&itl, Ht &&itr) {
       return Range<N, Lt, Ht, decltype(std::get<N>(std::declval<decltype(luts)>()))>
         { std::forward<Lt>(itl), std::forward<Ht>(itr), std::get<N>(luts) };
     }
 
-    template<size_t N>
+    template<std::size_t N>
     struct Compare {
       template<typename T1, typename T2>
       bool operator()(T1 const &lhs, T2 const &rhs) const {
@@ -445,7 +446,7 @@ namespace CQL {
       using is_transparent = void;
     };
 
-    template<size_t Idx>
+    template<std::size_t Idx>
     static decltype(auto) makeSet() {
       if constexpr(Custom::DefaultLookup<Entry>{}() == Idx) {
         return std::set<std::unique_ptr<Entry>, Compare<Idx>>{};
@@ -458,7 +459,7 @@ namespace CQL {
       }
     }
 
-    template<size_t ...Is>
+    template<std::size_t ...Is>
     static decltype(auto) makeSets(std::index_sequence<Is...>) {
       return std::make_tuple(makeSet<Is>()...);
     }
@@ -492,7 +493,7 @@ namespace CQL {
       }
     }
 
-    template<size_t N, typename T>
+    template<std::size_t N, typename T>
     void updateAll(T &&entry) {
       if constexpr(N < std::tuple_size<Entry>::value) {
         if constexpr(N == Custom::DefaultLookup<Entry>{}()) {
@@ -510,7 +511,7 @@ namespace CQL {
       }
     }
 
-    template<size_t N, typename T>
+    template<std::size_t N, typename T>
     void eraseAll(T const &entry) {
       if constexpr(N < std::tuple_size<Entry>::value) {
         if (auto it = findInLut<N>(entry); it != std::get<N>(luts).end()) {
@@ -520,7 +521,7 @@ namespace CQL {
       }
     }
 
-    template<size_t N>
+    template<std::size_t N>
     void clearAll() {
       if constexpr(N < std::tuple_size<Entry>::value) {
         std::get<N>(luts).clear();
@@ -528,7 +529,7 @@ namespace CQL {
       }
     }
 
-    template<size_t N, size_t Er, typename T>
+    template<std::size_t N, std::size_t Er, typename T>
     auto eraseIt(T const &it) {
       if constexpr(N < std::tuple_size<Entry>::value) {
         if constexpr(N == Er) {
@@ -542,7 +543,7 @@ namespace CQL {
       }
     }
 
-    template<size_t N, typename T>
+    template<std::size_t N, typename T>
     auto findInLut(T const &val) const {
       if constexpr(Custom::Unique<Entry, N>{}() == Custom::Uniqueness::NotUnique) {
         auto[low, hi] = std::get<N>(luts).equal_range(val);
@@ -557,12 +558,12 @@ namespace CQL {
       return std::get<N>(luts).end();
     }
 
-    template<size_t N, typename T>
+    template<std::size_t N, typename T>
     auto moveOutOfTable(T const &val) {
       return std::get<N>(luts).extract(findInLut<N>(val));
     }
     
-    template<size_t N, typename T>
+    template<std::size_t N, typename T>
     auto shouldInsert(T const &val) const {
       if constexpr(N < std::tuple_size<Entry>::value) {
         if constexpr(Custom::Unique<Entry, N>{}() == Custom::Uniqueness::EnforceUnique) {
@@ -593,9 +594,9 @@ namespace CQL {
   struct Detail::Deserialize<Table<T>> {
     Table<T> operator()(std::istream &is) const {
       Table<T> table;
-      auto const s = static_cast<size_t>(deserialize<uint64_t>(is));
+      auto const s = static_cast<std::size_t>(deserialize<uint64_t>(is));
 
-      for(size_t i = 0; i < s; ++ i) {
+      for(std::size_t i = 0; i < s; ++ i) {
         table.emplace(deserialize<T>(is));
       }
 
