@@ -565,7 +565,6 @@ namespace CQL {
     
     template<std::size_t N, typename T>
     auto shouldInsert(T const &val) const {
-      //auto l = [this](auto &val) { // MSVC has compiler bug, this is to avoid it: https://developercommunity.visualstudio.com/content/problem/466336/.html
       if constexpr(N < std::tuple_size<Entry>::value) {
         if constexpr(Custom::Unique<Entry, N>{}() == Custom::Uniqueness::EnforceUnique) {
           return (std::get<N>(luts).find(val) == std::get<N>(luts).end()) && shouldInsert<N + 1>(val);
