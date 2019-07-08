@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 project(CQL-test)
 
-enable_language(C)
 enable_language(CXX)
 
 if(NOT (CMAKE_CXX_COMPILER_ID MATCHES MSVC)) #GCC
