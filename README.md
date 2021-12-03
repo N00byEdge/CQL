@@ -65,7 +65,7 @@ template <> struct std::tuple_size<User> : public std::integral_constant<size_t,
 
 // Type of each part, we peek at our get() for the answer.
 template<size_t Ind> struct std::tuple_element<Ind, User> {
-  using type = decltype(std::get<User, Ind>);
+  using type = decltype(std::get<Ind>(std::declval<User>()));
 };
 ```
 
