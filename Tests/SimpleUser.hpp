@@ -67,7 +67,7 @@ namespace std {
 
 template <> struct std::tuple_size<SimpleUser> : public std::integral_constant<std::size_t, 3> { };
 template<std::size_t Ind> struct std::tuple_element<Ind, SimpleUser> {
-  using type = decltype(std::get<SimpleUser, Ind>);
+  using type = decltype(std::get<Ind>(std::declval<SimpleUser>()));
 };
 
 namespace CQL::Custom {
